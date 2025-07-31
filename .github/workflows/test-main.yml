@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  test-main:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Composer Install
+        uses: php-actions/composer@v6
+        with:
+          php_version: 8.2
+          php_extensions: intl bcmath
+
+      - name: Check Style
+        run: make style
+
+      - name: Analyze code
+        run: make analyze
+
+      - name: Run tests
+        env: # Or as an environment variable
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: make COVERALLS_REPO_TOKEN="$COVERALLS_REPO_TOKEN" coveralls
+

@@ -1,0 +1,29 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [ "main", "v1-php8" ]
+
+jobs:
+  test_pull_request:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Composer Install
+        uses: php-actions/composer@v6
+        with:
+          php_version: 8.2
+          php_extensions: intl bcmath
+
+      - name: Check Style
+        run: make style
+
+      - name: Analyze code
+        run: make analyze
+
+      - name: Run tests
+        run: make check-coverage

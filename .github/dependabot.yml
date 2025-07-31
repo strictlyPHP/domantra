@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: "composer"
+    directory: "/" # Root directory of your composer.json
+    schedule:
+      interval: "daily" # "daily", "weekly", "monthly"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all" # or "direct", "indirect"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # Optionally also update GitHub Actions if you use them:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
