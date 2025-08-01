@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace StrictlyPHP\Tests\Domantra\Unit\Command;
 
 use PHPUnit\Framework\MockObject\MockObject;
@@ -16,7 +18,9 @@ use StrictlyPHP\Domantra\Domain\EventLogItem;
 class CommandBusTest extends TestCase
 {
     protected MockObject & LoggerInterface $logger;
+
     protected MockObject & EventBusInterface $eventBus;
+
     protected MockObject & DtoCacheHandlerInterface $cacheHandler;
 
     protected CommandBus $commandBus;
@@ -36,7 +40,7 @@ class CommandBusTest extends TestCase
         $this->expectExceptionMessage('Handler must accept exactly one parameter');
 
         $this->commandBus->registerHandler(
-            'TestCommand',
+            CommandInterface::class,
             function ($param1, $param2) {}
         );
     }
@@ -47,7 +51,7 @@ class CommandBusTest extends TestCase
         $this->expectExceptionMessage('Handler parameter must be an instance of CommandInterface');
 
         $this->commandBus->registerHandler(
-            'TestCommand',
+            CommandInterface::class,
             function ($param) {}
         );
     }
@@ -56,7 +60,7 @@ class CommandBusTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
         $mockCommand = $this->createMock(CommandInterface::class);
-        $this->expectExceptionMessage(sprintf('No handler registered for command: %s',get_class($mockCommand)));
+        $this->expectExceptionMessage(sprintf('No handler registered for command: %s', get_class($mockCommand)));
 
         $this->commandBus->dispatch($mockCommand);
     }
@@ -71,11 +75,13 @@ class CommandBusTest extends TestCase
             get_class($mockCommand),
             new class($mockModel) implements CommandInterface {
                 private AbstractAggregateRoot $mockModel;
+
                 public function __construct(AbstractAggregateRoot $mockModel)
                 {
                     $this->mockModel = $mockModel;
                 }
-                public function __invoke(CommandInterface $command) : AbstractAggregateRoot
+
+                public function __invoke(CommandInterface $command): AbstractAggregateRoot
                 {
                     return $this->mockModel;
                 }
@@ -86,7 +92,10 @@ class CommandBusTest extends TestCase
             new EventLogItem(
                 event: $this->createMock(EventInterface::class),
                 happenedAt: new \DateTimeImmutable(),
-                dto: (object) [ 'id' => 'test-id', 'name' => 'Test Model' ]
+                dto: (object) [
+                    'id' => 'test-id',
+                    'name' => 'Test Model',
+                ]
             );
 
         $mockModel->expects(self::once())
@@ -95,7 +104,10 @@ class CommandBusTest extends TestCase
 
         $mockModel->expects(self::once())
             ->method('jsonSerialize')
-            ->willReturn((object) ['id' => 'test-id', 'name' => 'Test Model']);
+            ->willReturn((object) [
+                'id' => 'test-id',
+                'name' => 'Test Model',
+            ]);
 
         $mockModel->expects(self::once())
             ->method('getCacheKey')
@@ -108,7 +120,10 @@ class CommandBusTest extends TestCase
         $this->cacheHandler->expects(self::once())
             ->method('set')
             ->with(
-                (object) ['id' => 'test-id', 'name' => 'Test Model'],
+                (object) [
+                    'id' => 'test-id',
+                    'name' => 'Test Model',
+                ],
                 'test-cache-key',
                 get_class($mockModel)
             );
