@@ -11,16 +11,16 @@ use StrictlyPHP\Domantra\Domain\UseTimestamps;
 #[UseTimestamps(softDelete: true)]
 class UserModel extends AbstractAggregateRoot
 {
-    private Id $id;
+    private UserId $id;
 
     private string $username;
 
     private string $email;
 
     public static function create(
-        Id $id,
-        string $username,
-        string $email,
+        UserId            $id,
+        string            $username,
+        string            $email,
         DateTimeImmutable $createdAt,
     ): self {
         $model = new self();
@@ -56,7 +56,7 @@ class UserModel extends AbstractAggregateRoot
         return (string) $this->id;
     }
 
-    public function getId(): Id
+    public function getId(): UserId
     {
         return $this->id;
     }

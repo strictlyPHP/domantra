@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace StrictlyPHP\Tests\Domantra\Fixtures\Domain;
 
-class Id implements \Stringable, \JsonSerializable
+abstract class Id implements \Stringable, \JsonSerializable
 {
     public function __construct(
         private readonly string $id

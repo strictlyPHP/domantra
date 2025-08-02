@@ -9,7 +9,7 @@ use StrictlyPHP\Domantra\Command\EventInterface;
 class UserWasCreated implements EventInterface
 {
     public function __construct(
-        public readonly Id $id,
+        public readonly UserId $id,
         public readonly string $username,
         public readonly string $email
     ) {

@@ -11,7 +11,8 @@ use StrictlyPHP\Domantra\Query\AggregateRootHandler;
 use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use StrictlyPHP\Domantra\Query\QueryBus;
-use StrictlyPHP\Tests\Domantra\Fixtures\Domain\Id;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\ProfileId;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserQuery;
 
 class QueryBusTest extends TestCase
@@ -31,9 +32,9 @@ class QueryBusTest extends TestCase
     public function testHandleWithNoRegisteredHandler(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No handler registered for query: ' . Id::class);
+        $this->expectExceptionMessage('No handler registered for query: ' . UserId::class);
 
-        $query = new Id('test-id');
+        $query = new UserId('test-id');
         $this->queryBus->handle($query);
     }
 
@@ -51,14 +52,14 @@ class QueryBusTest extends TestCase
 
     public function testHandleWithRegisteredHandler(): void
     {
-        $query = new Id('test-id');
+        $query = new UserId('test-id');
         $handler = $this->createMock(SingleHandlerInterface::class);
         $dto = (object) [
             'id' => $query,
             'name' => 'Test Name',
         ];
 
-        $this->queryBus->registerHandler(Id::class, $handler);
+        $this->queryBus->registerHandler(UserId::class, $handler);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -76,7 +77,7 @@ class QueryBusTest extends TestCase
     public function testHandleWithRegisteredPaginatedHandler(): void
     {
         $query = new UserQuery();
-        $id = new Id('test-id');
+        $id = new UserId('test-id');
         $handler = $this->createMock(SingleHandlerInterface::class);
         $paginatedHandler = $this->createMock(PaginatedHandlerInterface::class);
         $dto = (object) [
@@ -84,7 +85,7 @@ class QueryBusTest extends TestCase
             'name' => 'Test Name',
         ];
 
-        $this->queryBus->registerHandler(Id::class, $handler);
+        $this->queryBus->registerHandler(UserId::class, $handler);
         $this->queryBus->registerHandler(UserQuery::class, $paginatedHandler);
 
         $paginatedHandler->expects($this->once())
@@ -104,6 +105,61 @@ class QueryBusTest extends TestCase
             'page' => 1,
             'perPage' => 10,
             'totalItems' => 1,
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testHandleExpandedWithRegisteredHandler(): void
+    {
+        $query = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+        $handler1 = $this->createMock(SingleHandlerInterface::class);
+        $handler2 = $this->createMock(SingleHandlerInterface::class);
+        $dto = (object) [
+            'id' => $query,
+            'profile' => $profileId,
+            'name' => 'Test Name',
+        ];
+
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'hello world',
+        ];
+
+        $expandedDto = (object) [
+            'id' => $query,
+            'profile' => $profileDto,
+            'name' => 'Test Name',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $handler1);
+        $this->queryBus->registerHandler(ProfileId::class, $handler2);
+
+        $expectedCalls = [
+            ['args' => [$query, $handler1], 'return' => $dto],
+            ['args' => [$profileId, $handler2], 'return' => $profileDto],
+        ];
+
+        $callCount = 0;
+
+        $this->aggregateRootHandler->expects($this->exactly(2))
+            ->method('handle')
+            ->with($this->callback(function ($arg1) use (&$callCount, $expectedCalls) {
+                // Adjust argument check depending on your method signature
+                $expectedArgs = $expectedCalls[$callCount]['args'];
+                $isValid = $arg1 === $expectedArgs[0]; // example check
+                return $isValid;
+            }))
+            ->willReturnCallback(function () use (&$callCount, $expectedCalls) {
+                $returnValue = $expectedCalls[$callCount]['return'];
+                $callCount++;
+                return $returnValue;
+            });
+
+        $response = $this->queryBus->handle($query);
+
+        $expected = (object) [
+            'item' => $expandedDto,
         ];
         $this->assertEquals($expected, $response->jsonSerialize());
     }

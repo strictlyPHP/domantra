@@ -20,8 +20,8 @@ class EventLogItemTest extends TestCase
             dto: $dto
         );
 
-        self::assertSame($event, $eventLogItem->event);
-        self::assertSame($happenedAt, $eventLogItem->happenedAt);
-        self::assertSame($dto, $eventLogItem->dto);
+        $this->assertSame($event, $eventLogItem->event);
+        $this->assertSame($happenedAt, $eventLogItem->happenedAt);
+        $this->assertSame($dto, $eventLogItem->dto);
     }
 }

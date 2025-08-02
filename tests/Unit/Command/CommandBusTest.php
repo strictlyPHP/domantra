@@ -98,15 +98,15 @@ class CommandBusTest extends TestCase
                 ]
             );
 
-        $mockModel->expects(self::once())
+        $mockModel->expects($this->once())
             ->method('_getEventLogItems')
             ->willReturn([$eventLogItem]);
 
-        $this->eventBus->expects(self::once())
+        $this->eventBus->expects($this->once())
             ->method('dispatch')
             ->with($eventLogItem);
 
-        $this->cacheHandler->expects(self::once())
+        $this->cacheHandler->expects($this->once())
             ->method('set')
             ->with($mockModel);
 
