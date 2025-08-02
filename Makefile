@@ -12,7 +12,7 @@ install: ## Install dependencies
 
 .PHONY: check-coverage
 check-coverage: ## Check the test coverage of changed files
-		git fetch origin && git diff origin/main > ${PWD}/diff.txt && docker build -t strictlyphp/domantra . && docker-compose up -d && docker run --network domantra --user=$(shell id -u):$(shell id -g) --rm --name strictlyphp-domantra -v "${PWD}":/usr/src/myapp -w /usr/src/myapp strictlyphp/domantra ./build/check-coverage.sh && docker-compose down
+		git fetch origin && git diff origin/main > ${PWD}/diff.txt && docker build -t strictlyphp/domantra . && docker compose up -d && docker run --network domantra --user=$(shell id -u):$(shell id -g) --rm --name strictlyphp-domantra -v "${PWD}":/usr/src/myapp -w /usr/src/myapp strictlyphp/domantra ./build/check-coverage.sh && docker compose down
 
 .PHONY: style
 style: ## Check coding style
