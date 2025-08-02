@@ -136,8 +136,14 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(ProfileId::class, $handler2);
 
         $expectedCalls = [
-            ['args' => [$query, $handler1], 'return' => $dto],
-            ['args' => [$profileId, $handler2], 'return' => $profileDto],
+            [
+                'args' => [$query, $handler1],
+                'return' => $dto,
+            ],
+            [
+                'args' => [$profileId, $handler2],
+                'return' => $profileDto,
+            ],
         ];
 
         $callCount = 0;

@@ -6,5 +6,4 @@ namespace StrictlyPHP\Tests\Domantra\Fixtures\Domain;
 
 class UserId extends Id
 {
-
 }

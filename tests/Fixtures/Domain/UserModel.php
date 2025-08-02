@@ -18,9 +18,9 @@ class UserModel extends AbstractAggregateRoot
     private string $email;
 
     public static function create(
-        UserId            $id,
-        string            $username,
-        string            $email,
+        UserId $id,
+        string $username,
+        string $email,
         DateTimeImmutable $createdAt,
     ): self {
         $model = new self();
