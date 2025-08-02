@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Domantra\Query;
 
-use StrictlyPHP\Domantra\Command\DtoCacheHandlerInterface;
+use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 
 class AggregateRootHandler
@@ -23,18 +23,18 @@ class AggregateRootHandler
         }
         $typeName = $returnType->getName();
 
-        $dto = $this->cacheHandler->get((string) $query, $typeName);
+        $model = $this->cacheHandler->get((string) $query, $typeName);
 
-        if ($dto === null) {
+        if ($model === null) {
             $model = $handler($query);
             if ($model instanceof AbstractAggregateRoot) {
-                $dto = $model->jsonSerialize();
-                $this->cacheHandler->set($dto, (string) $query, $typeName);
+                $model->_clearEventLogItems();
+                $this->cacheHandler->set($model);
             } else {
                 throw new \RuntimeException(sprintf('Handler must return an instance of %s', AbstractAggregateRoot::class));
             }
         }
 
-        return $dto;
+        return $model->jsonSerialize();
     }
 }

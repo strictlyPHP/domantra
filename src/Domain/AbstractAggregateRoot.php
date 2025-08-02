@@ -31,18 +31,8 @@ abstract class AbstractAggregateRoot implements \JsonSerializable
 
     protected function recordAndApplyThat(
         EventInterface $event,
-        \DateTimeImmutable $happenedAt,
+        ?\DateTimeImmutable $happenedAt = null,
     ): void {
-        $this->handle($event, $happenedAt);
-        $this->_eventLogItems[] = new EventLogItem(
-            event: $event,
-            happenedAt: $happenedAt,
-            dto : json_decode(json_encode($this))
-        );
-    }
-
-    private function handle(EventInterface $event, \DateTimeImmutable $happenedAt): void
-    {
         $classArray = explode('\\', get_class($event));
         $class = end($classArray);
         $method = sprintf('applyThat%s', $class);
@@ -68,6 +58,27 @@ abstract class AbstractAggregateRoot implements \JsonSerializable
                 $this->deletedAt = null;
             }
         }
+
+        $this->_eventLogItems[] = new EventLogItem(
+            event: $event,
+            happenedAt: $happenedAt,
+            dto : json_decode(json_encode($this))
+        );
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function getDeletedAt(): ?\DateTimeImmutable
+    {
+        return $this->deletedAt;
     }
 
     /**
@@ -76,5 +87,10 @@ abstract class AbstractAggregateRoot implements \JsonSerializable
     public function _getEventLogItems(): array
     {
         return $this->_eventLogItems;
+    }
+
+    public function _clearEventLogItems(): void
+    {
+        $this->_eventLogItems = [];
     }
 }

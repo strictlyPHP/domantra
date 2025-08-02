@@ -1,0 +1,17 @@
+version: "3.5"
+
+services:
+  redis:
+    image: redis
+    restart: always
+    container_name: domantra.redis
+    ports:
+      - "63790:6379"
+    tmpfs:
+      - /data
+    networks:
+      - domantra
+
+networks:
+  domantra:
+    name: domantra

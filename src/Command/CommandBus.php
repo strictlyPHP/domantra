@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace StrictlyPHP\Domantra\Command;
 
 use Psr\Log\LoggerInterface;
+use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 
 class CommandBus implements CommandBusInterface
@@ -63,6 +64,6 @@ class CommandBus implements CommandBusInterface
                 'eventData' => $eventData,
             ]);
         }
-        $this->cacheHandler->set($model->jsonSerialize(), $model->getCacheKey(), get_class($model));
+        $this->cacheHandler->set($model);
     }
 }

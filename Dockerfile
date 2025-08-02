@@ -16,6 +16,7 @@ RUN apt-get update && \
         php8.2-intl \
         php8.2-xdebug \
         php8.2-mbstring \
-        php8.2-xml
+        php8.2-xml\
+        php8.2-redis
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer

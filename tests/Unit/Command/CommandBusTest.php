@@ -7,9 +7,9 @@ namespace StrictlyPHP\Tests\Domantra\Unit\Command;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Command\CommandBus;
 use StrictlyPHP\Domantra\Command\CommandInterface;
-use StrictlyPHP\Domantra\Command\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Command\EventBusInterface;
 use StrictlyPHP\Domantra\Command\EventInterface;
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
@@ -102,31 +102,13 @@ class CommandBusTest extends TestCase
             ->method('_getEventLogItems')
             ->willReturn([$eventLogItem]);
 
-        $mockModel->expects(self::once())
-            ->method('jsonSerialize')
-            ->willReturn((object) [
-                'id' => 'test-id',
-                'name' => 'Test Model',
-            ]);
-
-        $mockModel->expects(self::once())
-            ->method('getCacheKey')
-            ->willReturn('test-cache-key');
-
         $this->eventBus->expects(self::once())
             ->method('dispatch')
             ->with($eventLogItem);
 
         $this->cacheHandler->expects(self::once())
             ->method('set')
-            ->with(
-                (object) [
-                    'id' => 'test-id',
-                    'name' => 'Test Model',
-                ],
-                'test-cache-key',
-                get_class($mockModel)
-            );
+            ->with($mockModel);
 
         $this->commandBus->dispatch($mockCommand);
     }
