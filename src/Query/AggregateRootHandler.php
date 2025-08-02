@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Domantra\Query;
 
+use ReflectionNamedType;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Query\Exception\ModelNotFoundException;
+use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 
 class AggregateRootHandler
 {
@@ -14,25 +16,22 @@ class AggregateRootHandler
     ) {
     }
 
-    public function handle(callable $handler, \Stringable $query): \stdClass
+    /**
+     * @throws ModelNotFoundException
+     */
+    public function handle(\Stringable $query, SingleHandlerInterface $handler): \stdClass
     {
         $reflection = new \ReflectionFunction(\Closure::fromCallable($handler));
+        /** @var ReflectionNamedType $returnType */
         $returnType = $reflection->getReturnType();
-        if (! ($returnType instanceof \ReflectionNamedType)) {
-            throw new \RuntimeException('Handler must return a named type');
-        }
         $typeName = $returnType->getName();
 
         $model = $this->cacheHandler->get((string) $query, $typeName);
 
         if ($model === null) {
-            $model = $handler($query);
-            if ($model instanceof AbstractAggregateRoot) {
-                $model->_clearEventLogItems();
-                $this->cacheHandler->set($model);
-            } else {
-                throw new \RuntimeException(sprintf('Handler must return an instance of %s', AbstractAggregateRoot::class));
-            }
+            $model = $handler->__invoke($query);
+            $model->_clearEventLogItems();
+            $this->cacheHandler->set($model);
         }
 
         return $model->jsonSerialize();

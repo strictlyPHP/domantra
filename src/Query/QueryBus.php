@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace StrictlyPHP\Domantra\Query;
 
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
-use StrictlyPHP\Domantra\Domain\PaginatedIdCollection;
+use StrictlyPHP\Domantra\Query\Exception\ModelNotFoundException;
+use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
+use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
+use StrictlyPHP\Domantra\Query\Response\ModelResponse;
+use StrictlyPHP\Domantra\Query\Response\PaginatedModelResponse;
+use StrictlyPHP\Domantra\Query\Response\ResponseInterface;
 
 class QueryBus implements QueryBusInterface
 {
     /**
-     * @var array<class-string, callable>
+     * @var array<class-string, SingleHandlerInterface|PaginatedHandlerInterface<mixed>>
      */
     private array $handlers = [];
 
@@ -22,30 +27,14 @@ class QueryBus implements QueryBusInterface
     /**
      * @param class-string $queryClass
      */
-    public function registerHandler(string $queryClass, callable $handler): void
+    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface $handler): void
     {
-        $reflection = new \ReflectionFunction(\Closure::fromCallable($handler));
-        $parameters = $reflection->getParameters();
-
-        if (count($parameters) !== 1) {
-            throw new \InvalidArgumentException('Handler must accept exactly one parameter');
-        }
-
-        $returnType = $reflection->getReturnType();
-
-        if ($returnType instanceof \ReflectionNamedType && ! $returnType->isBuiltin()) {
-            $typeName = $returnType->getName();
-            if (
-                ! is_a($typeName, AbstractAggregateRoot::class, true)
-                && ! is_a($typeName, PaginatedIdCollection::class, true)
-            ) {
-                throw new \RuntimeException(sprintf('Registration failed. Declared return type %s must be an instance of %s or %s', $typeName, AbstractAggregateRoot::class, PaginatedIdCollection::class));
-            }
-        }
-
         $this->handlers[$queryClass] = $handler;
     }
 
+    /**
+     * @throws ModelNotFoundException
+     */
     public function handle(object $query): ResponseInterface
     {
         $class = get_class($query);
@@ -53,31 +42,22 @@ class QueryBus implements QueryBusInterface
             throw new \RuntimeException("No handler registered for query: $class");
         }
         $handler = $this->handlers[$class];
-        $reflection = new \ReflectionFunction(\Closure::fromCallable($handler));
 
-        $returnType = $reflection->getReturnType();
-        if (! ($returnType instanceof \ReflectionNamedType)) {
-            throw new \RuntimeException('Handler must return a named type');
-        }
-        $typeName = $returnType->getName();
-        if (is_a($typeName, AbstractAggregateRoot::class, true)) {
+        if ($handler instanceof SingleHandlerInterface) {
             if ($query instanceof \Stringable) {
-                return new ModelResponse(
-                    $this->expandDto(
-                        $this->aggregateRootHandler->handle($handler, $query)
-                    )
-                );
+                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler)));
             } else {
                 throw new \RuntimeException(sprintf('Query must implement %s when the return type is %s', \Stringable::class, AbstractAggregateRoot::class));
             }
-        } elseif (is_a($typeName, PaginatedIdCollection::class, true)) {
-            $paginatedCollection = $handler($query);
+        } elseif ($handler instanceof PaginatedHandlerInterface) {
+            $paginatedCollection = $handler->__invoke($query);
             $items = [];
             foreach ($paginatedCollection as $id) {
                 $idClass = get_class($id);
+                /** @var SingleHandlerInterface $idHandler */
                 $idHandler = $this->handlers[$idClass];
                 $items[] = $this->expandDto(
-                    $this->aggregateRootHandler->handle($idHandler, $id)
+                    $this->aggregateRootHandler->handle($id, $idHandler)
                 );
             }
 
@@ -88,7 +68,8 @@ class QueryBus implements QueryBusInterface
                 $paginatedCollection->getTotalItems()
             );
         } else {
-            throw new \RuntimeException(sprintf('Handling failed. Declared return type %s must be an instance of %s or %s', $typeName, AbstractAggregateRoot::class, PaginatedIdCollection::class));
+            // We should never reach here. We are doing this to future-proof the code
+            throw new \RuntimeException(sprintf('Handling failed. handler %s must be an instance of %s or %s', get_class($handler), SingleHandlerInterface::class, PaginatedHandlerInterface::class));
         }
     }
 
@@ -101,7 +82,11 @@ class QueryBus implements QueryBusInterface
                 $class = get_class($value);
                 if (isset($this->handlers[$class])) {
                     $handler = $this->handlers[$class];
-                    $value = $this->aggregateRootHandler->handle($handler, $value);
+                    try {
+                        $value = $this->aggregateRootHandler->handle($value, $handler);
+                    } catch (ModelNotFoundException $e) {
+                        $value = null;
+                    }
                 }
             }
             $expanded->$property = $value;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace StrictlyPHP\Domantra\Query;
+namespace StrictlyPHP\Domantra\Query\Response;
 
 /**
  * @template T
@@ -24,6 +24,11 @@ class PaginatedModelResponse implements ResponseInterface
     ) {
         $this->perPage = $perPage ?? count($items);
         $this->totalItems = $totalItems ?? count($items);
+    }
+
+    public function getCode(): int
+    {
+        return 200;
     }
 
     public function jsonSerialize(): \stdClass
