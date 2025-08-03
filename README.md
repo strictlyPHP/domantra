@@ -1,4 +1,3 @@
-```php
 # Domantra
 
 [![Coverage Status](https://coveralls.io/repos/github/strictlyPHP/domantra/badge.svg?branch=main)](https://coveralls.io/github/strictlyPHP/domantra?branch=main)
