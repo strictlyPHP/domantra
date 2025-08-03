@@ -1,6 +1,6 @@
 {
   "name": "strictlyphp/domantra",
-  "version": "0.0.0-alpha",
+  "version": "0.0.1-alpha",
   "description": "A principled PHP toolkit for building DDD + CQRS services with clarity and structure.",
   "type": "library",
   "license": "MIT",

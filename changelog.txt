@@ -1,0 +1,6 @@
+Changelog for version 0.0.1-alpha
+
+- readme changes (#2) (Ken Lalobo)
+- initial setup (#1) (Ken Lalobo)
+- Create composer.json (Ken Lalobo)
+- Initial commit (Ken Lalobo)
