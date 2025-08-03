@@ -1,3 +1,4 @@
-Changelog for version 0.0.2
+Changelog for version 0.0.3
 
-- Update composer.json (Ken Lalobo)
+- delete composer.lock (Ken Lalobo)
+- update composer (Ken Lalobo)
