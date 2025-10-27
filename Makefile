@@ -24,4 +24,8 @@ style-fix: ## Check coding style
 
 .PHONY: analyze
 analyze: ## Runs static analysis tools
-		docker build -t strictlyphp82/dolphin . && docker run --user=$(shell id -u):$(shell id -g) --rm --name strictlyphp-domantra -v "${PWD}":/usr/src/myapp -w /usr/src/myapp strictlyphp/domantra php ./vendor/bin/phpstan analyse -l 6 -c phpstan.neon src tests
+		docker build -t strictlyphp/domantra . && docker run --user=$(shell id -u):$(shell id -g) --rm --name strictlyphp-domantra -v "${PWD}":/usr/src/myapp -w /usr/src/myapp strictlyphp/domantra php ./vendor/bin/phpstan analyse -l 6 -c phpstan.neon src tests
+
+.PHONY: coveralls
+coveralls: ## Run phpunit tests with coverage
+		docker build -t strictlyphp/domantra . && docker compose up -d && docker run --network domantra --user=$(shell id -u):$(shell id -g) --rm --name strictlyphp-domantra -v "${PWD}":/usr/src/myapp -w /usr/src/myapp -e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} strictlyphp/domantra ./build/coveralls.sh
