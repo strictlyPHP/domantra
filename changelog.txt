@@ -1,4 +1,4 @@
-Changelog for version 0.0.3
+Changelog for version 0.0.4
 
-- delete composer.lock (Ken Lalobo)
-- update composer (Ken Lalobo)
+- add the ability to throw and expception with a model (Ken Lalobo)
+- chore(deps): bump actions/checkout from 4 to 5 (dependabot[bot])
