@@ -31,7 +31,7 @@ abstract class AbstractAggregateRoot implements \JsonSerializable
 
     protected function recordAndApplyThat(
         EventInterface $event,
-        ?\DateTimeImmutable $happenedAt = null,
+        \DateTimeImmutable $happenedAt,
     ): void {
         $classArray = explode('\\', get_class($event));
         $class = end($classArray);
