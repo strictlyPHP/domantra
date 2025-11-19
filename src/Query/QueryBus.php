@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace StrictlyPHP\Domantra\Query;
 
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
-use StrictlyPHP\Domantra\Query\Exception\ModelNotFoundException;
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
+use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use StrictlyPHP\Domantra\Query\Response\ModelResponse;
@@ -21,19 +22,20 @@ class QueryBus implements QueryBusInterface
 
     public function __construct(
         private AggregateRootHandler $aggregateRootHandler,
+        private CachedDtoHandler $cachedDtoHandler
     ) {
     }
 
     /**
      * @param class-string $queryClass
      */
-    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface $handler): void
+    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface|DtoHandlerHandlerInterface $handler): void
     {
         $this->handlers[$queryClass] = $handler;
     }
 
     /**
-     * @throws ModelNotFoundException
+     * @throws ItemNotFoundException
      */
     public function handle(object $query): ResponseInterface
     {
@@ -83,8 +85,14 @@ class QueryBus implements QueryBusInterface
                 if (isset($this->handlers[$class])) {
                     $handler = $this->handlers[$class];
                     try {
-                        $value = $this->aggregateRootHandler->handle($value, $handler);
-                    } catch (ModelNotFoundException $e) {
+                        if ($handler instanceof DtoHandlerHandlerInterface) {
+                            $value = $this->cachedDtoHandler->handle($value, $handler);
+                        } elseif ($handler instanceof SingleHandlerInterface) {
+                            $value = $this->aggregateRootHandler->handle($value, $handler);
+                        } else {
+                            throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
+                        }
+                    } catch (ItemNotFoundException $e) {
                         $value = null;
                     }
                 }

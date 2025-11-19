@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace StrictlyPHP\Domantra\Cache;
 
 use Predis\Client;
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 
 class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
 {
@@ -28,7 +28,7 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
     /**
      * @param class-string $class
      */
-    public function get(string $cacheKey, string $class): ?AbstractAggregateRoot
+    public function get(string $cacheKey, string $class): ?CachedDtoInterface
     {
         $generatedKey = $this->getKey($cacheKey, $class);
         $data = $this->client->get($generatedKey);
@@ -40,7 +40,7 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
         return unserialize($data);
     }
 
-    public function set(AbstractAggregateRoot $dto, ?int $ttl = null): void
+    public function set(CachedDtoInterface $dto): void
     {
         $generatedKey = $this->getKey($dto->getCacheKey(), get_class($dto));
         $data = serialize($dto);
@@ -48,7 +48,7 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
             $generatedKey,
             $data,
             'EX',
-            $ttl ?? random_int(300, 600)
+            $dto->getTtl()
         );
     }
 

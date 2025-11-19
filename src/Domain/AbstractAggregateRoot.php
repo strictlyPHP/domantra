@@ -6,7 +6,7 @@ namespace StrictlyPHP\Domantra\Domain;
 
 use StrictlyPHP\Domantra\Command\EventInterface;
 
-abstract class AbstractAggregateRoot implements \JsonSerializable
+abstract class AbstractAggregateRoot implements CachedDtoInterface
 {
     protected \DateTimeImmutable $createdAt;
 
@@ -27,7 +27,10 @@ abstract class AbstractAggregateRoot implements \JsonSerializable
     {
     }
 
-    abstract public function getCacheKey(): string;
+    public function getTtl(): int
+    {
+        return random_int(300, 600) + 2592000; //approx 30 days
+    }
 
     protected function recordAndApplyThat(
         EventInterface $event,
