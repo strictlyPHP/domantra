@@ -6,6 +6,6 @@ namespace StrictlyPHP\Domantra\Query\Exception;
 
 use Exception;
 
-class ModelNotFoundException extends Exception
+class ItemNotFoundException extends Exception
 {
 }

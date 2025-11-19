@@ -7,9 +7,9 @@ namespace StrictlyPHP\Domantra\Query;
 use ReflectionNamedType;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
-use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
+use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
 
-class AggregateRootHandler
+class CachedDtoHandler
 {
     public function __construct(
         private DtoCacheHandlerInterface $cacheHandler,
@@ -19,7 +19,7 @@ class AggregateRootHandler
     /**
      * @throws ItemNotFoundException
      */
-    public function handle(\Stringable $query, SingleHandlerInterface $handler): \stdClass
+    public function handle(\Stringable $query, DtoHandlerHandlerInterface $handler): \stdClass
     {
         $reflection = new \ReflectionFunction(\Closure::fromCallable($handler));
         /** @var ReflectionNamedType $returnType */
@@ -28,14 +28,11 @@ class AggregateRootHandler
 
         $dto = $this->cacheHandler->get((string) $query, $typeName);
 
-        if ($dto !== null) {
-            return $dto->jsonSerialize();
+        if ($dto === null) {
+            $dto = $handler->__invoke($query);
+            $this->cacheHandler->set($dto);
         }
 
-        $model = $handler->__invoke($query);
-        $model->_clearEventLogItems();
-        $this->cacheHandler->set($model);
-
-        return $model->jsonSerialize();
+        return $dto->jsonSerialize();
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Domantra\Cache;
 
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 
 class DtoCacheHandlerRedis extends AbstractDtoCacheHandler
 {
@@ -32,20 +32,20 @@ class DtoCacheHandlerRedis extends AbstractDtoCacheHandler
     /**
      * @param class-string $class
      */
-    public function get(string $cacheKey, string $class): ?AbstractAggregateRoot
+    public function get(string $cacheKey, string $class): ?CachedDtoInterface
     {
         $generatedKey = $this->getKey($cacheKey, $class);
 
         return $this->redis->get($generatedKey) ?: null;
     }
 
-    public function set(AbstractAggregateRoot $dto, ?int $ttl = null): void
+    public function set(CachedDtoInterface $dto): void
     {
         $generatedKey = $this->getKey($dto->getCacheKey(), get_class($dto));
         $this->redis->set(
             $generatedKey,
             $dto,
-            $ttl ?? random_int(300, 600)
+            $dto->getTtl()
         );
     }
 
