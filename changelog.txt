@@ -1,6 +1,6 @@
-Changelog for version 0.0.5
+Changelog for version 0.0.6
 
-- add dto item query handling (Ken Lalobo)
-- deps(deps-dev): update symplify/easy-coding-standard requirement from ^11.1 || ^12.0 to ^11.1 || ^12.0 || ^13.0 (dependabot[bot])
-- fix apply that code (Ken Lalobo)
-- coveralls fix (Ken Lalobo)
+- fix tests (Ken Lalobo)
+- style and analyze fixes (Ken Lalobo)
+- add role based property removal (Ken Lalobo)
+- chore(deps): bump actions/checkout from 5 to 6 (dependabot[bot])
