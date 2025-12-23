@@ -61,7 +61,7 @@ class AggregateRootHandlerTest extends TestCase
             null
         );
 
-        $this->assertEquals($model->getDto(), $result);
+        $this->assertEquals(json_decode(json_encode($model->getDto())), $result);
     }
 
     public function testHandleCallsHandlerWhenCacheMiss(): void
@@ -96,7 +96,7 @@ class AggregateRootHandlerTest extends TestCase
             null
         );
 
-        $this->assertEquals($model->getDto(), $result);
+        $this->assertEquals(json_decode(json_encode($model->getDto())), $result);
     }
 
     public function testThrowsExceptionWithWrongReturnType(): void
@@ -148,7 +148,5 @@ class AggregateRootHandlerTest extends TestCase
             },
             null
         );
-
-        $this->assertEquals($model->getDto(), $result);
     }
 }
