@@ -101,7 +101,7 @@ class CommandBus implements CommandBusInterface
                 }
             }
 
-            $this->cacheHandler->set($aggregate);
+            $this->cacheHandler->set($aggregate->getDto());
         }
 
         if (! $hasEvents) {

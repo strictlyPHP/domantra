@@ -9,23 +9,8 @@ use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Query\CachedDtoHandler;
 use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
-use StrictlyPHP\Tests\Domantra\Fixtures\Domain\TestDto;
-
-/**
- * Test handler that returns a specific DTO type
- */
-class TestDtoHandler implements DtoHandlerHandlerInterface
-{
-    public function __construct(
-        private TestDto $dto
-    ) {
-    }
-
-    public function __invoke(object $query): TestDto
-    {
-        return $this->dto;
-    }
-}
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserDto;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 
 class CachedDtoHandlerTest extends TestCase
 {
@@ -44,31 +29,37 @@ class CachedDtoHandlerTest extends TestCase
         $query = $this->createMock(\Stringable::class);
         $query->method('__toString')->willReturn('test-id');
 
-        $dto = new TestDto();
+        $dto = new UserDto(
+            new UserId('test-id'),
+            'Test',
+            'test@example.com',
+        );
 
         $this->cacheHandler->expects($this->once())
             ->method('get')
-            ->with('test-id', TestDto::class)
+            ->with('test-id', UserDto::class)
             ->willReturn($dto);
 
         $result = $this->handler->handle(
             $query,
             new class($dto) implements DtoHandlerHandlerInterface {
                 public function __construct(
-                    private TestDto $dto
+                    private UserDto $dto
                 ) {
                 }
 
-                public function __invoke(object $query): TestDto
+                public function __invoke(object $query): UserDto
                 {
                     return $this->dto;
                 }
-            }
+            },
+            null
         );
 
         $this->assertEquals((object) [
-            'id' => 'test-id',
-            'name' => 'Test',
+            'id' => new UserId('test-id'),
+            'username' => 'Test',
+            'email' => 'test@example.com',
         ], $result);
     }
 
@@ -77,11 +68,15 @@ class CachedDtoHandlerTest extends TestCase
         $query = $this->createMock(\Stringable::class);
         $query->method('__toString')->willReturn('test-id');
 
-        $dto = new TestDto();
+        $dto = new UserDto(
+            new UserId('test-id'),
+            'Test',
+            'test@example.com',
+        );
 
         $this->cacheHandler->expects($this->once())
             ->method('get')
-            ->with('test-id', TestDto::class)
+            ->with('test-id', UserDto::class)
             ->willReturn(null);
 
         $this->cacheHandler->expects($this->once())
@@ -92,20 +87,22 @@ class CachedDtoHandlerTest extends TestCase
             $query,
             new class($dto) implements DtoHandlerHandlerInterface {
                 public function __construct(
-                    private TestDto $dto
+                    private UserDto $dto
                 ) {
                 }
 
-                public function __invoke(object $query): TestDto
+                public function __invoke(object $query): UserDto
                 {
                     return $this->dto;
                 }
-            }
+            },
+            null
         );
 
         $this->assertEquals((object) [
-            'id' => 'test-id',
-            'name' => 'Test',
+            'id' => new UserId('test-id'),
+            'username' => 'Test',
+            'email' => 'test@example.com',
         ], $result);
     }
 }

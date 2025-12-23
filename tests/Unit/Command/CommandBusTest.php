@@ -14,6 +14,7 @@ use StrictlyPHP\Domantra\Command\CommandInterface;
 use StrictlyPHP\Domantra\Command\EventBusInterface;
 use StrictlyPHP\Domantra\Command\EventInterface;
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 use StrictlyPHP\Domantra\Domain\EventLogItem;
 
 class CommandBusTest extends TestCase
@@ -70,6 +71,7 @@ class CommandBusTest extends TestCase
     {
         $mockCommand = $this->createMock(CommandInterface::class);
         $mockModel = $this->createMock(AbstractAggregateRoot::class);
+        $mockDto = $this->createMock(CachedDtoInterface::class);
 
 
         $this->commandBus->registerHandler(
@@ -107,9 +109,13 @@ class CommandBusTest extends TestCase
             ->method('dispatch')
             ->with($eventLogItem);
 
+        $mockModel->expects($this->once())
+            ->method('getDto')
+            ->willReturn($mockDto);
+
         $this->cacheHandler->expects($this->once())
             ->method('set')
-            ->with($mockModel);
+            ->with($mockDto);
 
         $this->commandBus->dispatch($mockCommand);
     }
@@ -154,6 +160,7 @@ class CommandBusTest extends TestCase
 
         $mockCommand = $this->createMock(CommandInterface::class);
         $mockModel = $this->createMock(AbstractAggregateRoot::class);
+        $mockDto = $this->createMock(CachedDtoInterface::class);
 
         $this->commandBus->registerHandler(
             get_class($mockCommand),
@@ -190,9 +197,13 @@ class CommandBusTest extends TestCase
             ->method('dispatch')
             ->with($eventLogItem);
 
+        $mockModel->expects($this->once())
+            ->method('getDto')
+            ->willReturn($mockDto);
+
         $this->cacheHandler->expects($this->once())
             ->method('set')
-            ->with($mockModel);
+            ->with($mockDto);
 
         $this->commandBus->dispatch($mockCommand);
     }

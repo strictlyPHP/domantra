@@ -16,5 +16,5 @@ interface QueryBusInterface
      */
     public function registerHandler(string $queryClass, PaginatedHandlerInterface $handler): void;
 
-    public function handle(object $query): ResponseInterface;
+    public function handle(object $query, ?string $role = null): ResponseInterface;
 }

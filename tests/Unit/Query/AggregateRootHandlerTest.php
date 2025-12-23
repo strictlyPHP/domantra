@@ -8,9 +8,11 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 use StrictlyPHP\Domantra\Query\AggregateRootHandler;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\Id;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserDto;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserModel;
 
@@ -35,12 +37,13 @@ class AggregateRootHandlerTest extends TestCase
             email: 'test@example.com',
             createdAt: new \DateTimeImmutable(),
         );
+        $dto = $model->getDto();
 
         $this->cacheHandler
             ->expects($this->once())
             ->method('get')
-            ->with($query, UserModel::class)
-            ->willReturn($model);
+            ->with($query, UserDto::class)
+            ->willReturn($dto);
 
         $result = $this->handler->handle(
             $query,
@@ -54,10 +57,11 @@ class AggregateRootHandlerTest extends TestCase
                 {
                     return $this->model;
                 }
-            }
+            },
+            null
         );
 
-        $this->assertEquals($model->jsonSerialize(), $result);
+        $this->assertEquals(json_decode(json_encode($model->getDto())), $result);
     }
 
     public function testHandleCallsHandlerWhenCacheMiss(): void
@@ -73,7 +77,7 @@ class AggregateRootHandlerTest extends TestCase
         $this->cacheHandler
             ->expects($this->once())
             ->method('get')
-            ->with($query, UserModel::class)
+            ->with($query, UserDto::class)
             ->willReturn(null);
 
         $result = $this->handler->handle(
@@ -88,9 +92,61 @@ class AggregateRootHandlerTest extends TestCase
                 {
                     return $this->model;
                 }
-            }
+            },
+            null
         );
 
-        $this->assertEquals($model->jsonSerialize(), $result);
+        $this->assertEquals(json_decode(json_encode($model->getDto())), $result);
+    }
+
+    public function testThrowsExceptionWithWrongReturnType(): void
+    {
+        $model = new class() extends AbstractAggregateRoot {
+            public function __construct()
+            {
+                parent::__construct();
+            }
+
+            public function getDto(): CachedDtoInterface
+            {
+                return new class() implements CachedDtoInterface {
+                    public function getCacheKey(): string
+                    {
+                        return 'foo';
+                    }
+
+                    public function getTtl(): int
+                    {
+                        return 1;
+                    }
+                };
+            }
+        };
+
+        $query = new UserId('test-id');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage(
+            sprintf(
+                '%s is not allowed as a return type for %s. Use the class of the Dto instead.',
+                CachedDtoInterface::class,
+                AbstractAggregateRoot::class
+            )
+        );
+        $result = $this->handler->handle(
+            $query,
+            new class($model) implements SingleHandlerInterface {
+                public function __construct(
+                    private AbstractAggregateRoot $model
+                ) {
+                }
+
+                public function __invoke(object $query): AbstractAggregateRoot
+                {
+                    return $this->model;
+                }
+            },
+            null
+        );
     }
 }

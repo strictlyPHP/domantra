@@ -6,8 +6,8 @@ namespace StrictlyPHP\Tests\Domantra\Integration\Cache;
 
 use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInMemory;
-use StrictlyPHP\Domantra\Cache\DtoCacheHandlerPredis;
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserDto;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 
 class DtoCacheHandlerInMemoryTest extends TestCase
 {
@@ -21,25 +21,24 @@ class DtoCacheHandlerInMemoryTest extends TestCase
 
     public function testGetSetDelete(): void
     {
-        $cacheKey = 'test_key';
-        $model = $this->getMockBuilder(AbstractAggregateRoot::class)
-            ->disableOriginalConstructor()
-            ->getMockForAbstractClass();
+        $cacheKey = 'test-id';
+        $dto = new UserDto(
+            new UserId($cacheKey),
+            'test_username',
+            'test_email'
+        );
 
-        $model->method('getCacheKey')
-            ->willReturn($cacheKey);
-
-        $class = get_class($model);
+        $class = get_class($dto);
 
         // Set the DTO in cache
-        $this->cacheHandlerInMemory->set($model);
+        $this->cacheHandlerInMemory->set($dto);
 
-        /** @var AbstractAggregateRoot $cachedDto */
+        /** @var UserDto $cachedDto */
         $cachedDto = $this->cacheHandlerInMemory->get($cacheKey, $class);
 
         // Assert that the cached DTO is not null and matches the original DTO
         $this->assertNotNull($cachedDto);
-        $this->assertEquals($model->getCacheKey(), $cachedDto->getCacheKey());
+        $this->assertEquals($dto->getCacheKey(), $cachedDto->getCacheKey());
 
         // Delete the DTO from cache
         $this->cacheHandlerInMemory->delete($cacheKey, $class);

@@ -6,7 +6,7 @@ namespace StrictlyPHP\Domantra\Domain;
 
 use StrictlyPHP\Domantra\Command\EventInterface;
 
-abstract class AbstractAggregateRoot implements CachedDtoInterface
+abstract class AbstractAggregateRoot
 {
     protected \DateTimeImmutable $createdAt;
 
@@ -25,11 +25,6 @@ abstract class AbstractAggregateRoot implements CachedDtoInterface
      */
     protected function __construct()
     {
-    }
-
-    public function getTtl(): int
-    {
-        return random_int(300, 600) + 2592000; //approx 30 days
     }
 
     protected function recordAndApplyThat(
@@ -65,7 +60,7 @@ abstract class AbstractAggregateRoot implements CachedDtoInterface
         $this->_eventLogItems[] = new EventLogItem(
             event: $event,
             happenedAt: $happenedAt,
-            dto : json_decode(json_encode($this))
+            dto : json_decode(json_encode($this->getDto()))
         );
     }
 
@@ -96,4 +91,6 @@ abstract class AbstractAggregateRoot implements CachedDtoInterface
     {
         $this->_eventLogItems = [];
     }
+
+    abstract public function getDto(): CachedDtoInterface;
 }
