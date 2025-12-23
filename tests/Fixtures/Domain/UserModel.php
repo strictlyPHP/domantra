@@ -73,15 +73,6 @@ class UserModel extends AbstractAggregateRoot
         return $this->email;
     }
 
-    public function jsonSerialize(): \stdClass
-    {
-        return (object) [
-            'id' => $this->id,
-            'username' => $this->username,
-            'email' => $this->email,
-        ];
-    }
-
     public function getDto(): UserDto
     {
         return new UserDto(

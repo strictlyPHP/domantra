@@ -21,9 +21,9 @@ class DtoTransformerTest extends TestCase
     {
         $result = $this->transformer->transform(
             new class() {
-                public $foo = 'foo';
+                public string $foo = 'foo';
 
-                public $bar = 'bar';
+                public string $bar = 'bar';
             },
             null
         );
@@ -39,9 +39,9 @@ class DtoTransformerTest extends TestCase
         $result = $this->transformer->transform(
             new class() {
                 #[RequiresAuthenticatedUser]
-                public $foo = 'foo';
+                public string $foo = 'foo';
 
-                public $bar = 'bar';
+                public string $bar = 'bar';
             },
             null
         );
@@ -54,14 +54,14 @@ class DtoTransformerTest extends TestCase
     /**
      * @dataProvider userProvider
      */
-    public function testItShowsPropertiesWithAuthenticatedUserAttribute($role): void
+    public function testItShowsPropertiesWithAuthenticatedUserAttribute(string $role): void
     {
         $result = $this->transformer->transform(
             new class() {
                 #[RequiresAuthenticatedUser]
-                public $foo = 'foo';
+                public string $foo = 'foo';
 
-                public $bar = 'bar';
+                public string $bar = 'bar';
             },
             $role
         );
@@ -77,9 +77,9 @@ class DtoTransformerTest extends TestCase
         $result = $this->transformer->transform(
             new class() {
                 #[RequiresAuthenticatedUser(['ADMIN'])]
-                public $foo = 'foo';
+                public string $foo = 'foo';
 
-                public $bar = 'bar';
+                public string $bar = 'bar';
             },
             null
         );
@@ -92,14 +92,14 @@ class DtoTransformerTest extends TestCase
     /**
      * @dataProvider userProvider
      */
-    public function testItShowsPropertiesWithAuthenticatedUserRolesAttribute($role): void
+    public function testItShowsPropertiesWithAuthenticatedUserRolesAttribute(string $role): void
     {
         $result = $this->transformer->transform(
             new class() {
                 #[RequiresAuthenticatedUser(['ADMIN'])]
-                public $foo = 'foo';
+                public string $foo = 'foo';
 
-                public $bar = 'bar';
+                public string $bar = 'bar';
             },
             $role
         );
@@ -116,6 +116,9 @@ class DtoTransformerTest extends TestCase
         $this->assertEquals($expected[$role], $result);
     }
 
+    /**
+     * @return array<int, array<string>>
+     */
     public function userProvider(): array
     {
         return [
