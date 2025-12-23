@@ -6,7 +6,8 @@ namespace StrictlyPHP\Tests\Domantra\Integration\Cache;
 
 use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerRedis;
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserDto;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 
 class DtoCacheHandlerRedisTest extends TestCase
 {
@@ -22,24 +23,24 @@ class DtoCacheHandlerRedisTest extends TestCase
 
     public function testGetSetDelete(): void
     {
-        $cacheKey = 'test_key';
-        $model = $this->getMockBuilder(AbstractAggregateRoot::class)
-            ->disableOriginalConstructor()
-            ->getMockForAbstractClass();
-        $model->method('getCacheKey')
-            ->willReturn($cacheKey);
+        $cacheKey = 'test-id';
+        $dto = new UserDto(
+            new UserId($cacheKey),
+            'test_username',
+            'test_email'
+        );
 
-        $class = get_class($model);
+        $class = get_class($dto);
 
         // Set the DTO in cache
-        $this->cacheHandlerRedis->set($model);
+        $this->cacheHandlerRedis->set($dto);
 
-        /** @var AbstractAggregateRoot $cachedDto */
+        /** @var UserDto $cachedDto */
         $cachedDto = $this->cacheHandlerRedis->get($cacheKey, $class);
 
         // Assert that the cached DTO is not null and matches the original DTO
         $this->assertNotNull($cachedDto);
-        $this->assertEquals($model->getCacheKey(), $cachedDto->getCacheKey());
+        $this->assertEquals($dto->getCacheKey(), $cachedDto->getCacheKey());
 
         // Delete the DTO from cache
         $this->cacheHandlerRedis->delete($cacheKey, $class);

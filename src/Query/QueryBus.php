@@ -37,7 +37,7 @@ class QueryBus implements QueryBusInterface
     /**
      * @throws ItemNotFoundException
      */
-    public function handle(object $query): ResponseInterface
+    public function handle(object $query, ?string $role = null): ResponseInterface
     {
         $class = get_class($query);
         if (! isset($this->handlers[$class])) {
@@ -47,7 +47,7 @@ class QueryBus implements QueryBusInterface
 
         if ($handler instanceof SingleHandlerInterface) {
             if ($query instanceof \Stringable) {
-                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler)));
+                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler, $role), $role));
             } else {
                 throw new \RuntimeException(sprintf('Query must implement %s when the return type is %s', \Stringable::class, AbstractAggregateRoot::class));
             }
@@ -59,7 +59,8 @@ class QueryBus implements QueryBusInterface
                 /** @var SingleHandlerInterface $idHandler */
                 $idHandler = $this->handlers[$idClass];
                 $items[] = $this->expandDto(
-                    $this->aggregateRootHandler->handle($id, $idHandler)
+                    $this->aggregateRootHandler->handle($id, $idHandler, $role),
+                    $role
                 );
             }
 
@@ -75,7 +76,7 @@ class QueryBus implements QueryBusInterface
         }
     }
 
-    protected function expandDto(object $dto): object
+    protected function expandDto(object $dto, ?string $role): object
     {
         $expanded = (object) [];
 
@@ -86,9 +87,9 @@ class QueryBus implements QueryBusInterface
                     $handler = $this->handlers[$class];
                     try {
                         if ($handler instanceof DtoHandlerHandlerInterface) {
-                            $value = $this->cachedDtoHandler->handle($value, $handler);
+                            $value = $this->cachedDtoHandler->handle($value, $handler, $role);
                         } elseif ($handler instanceof SingleHandlerInterface) {
-                            $value = $this->aggregateRootHandler->handle($value, $handler);
+                            $value = $this->aggregateRootHandler->handle($value, $handler, $role);
                         } else {
                             throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
                         }

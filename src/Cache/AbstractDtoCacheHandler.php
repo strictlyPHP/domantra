@@ -21,7 +21,7 @@ abstract class AbstractDtoCacheHandler implements DtoCacheHandlerInterface
         return sprintf(
             '%s:%s:%s:%s',
             'resource-key',
-            $class,
+            str_replace('\\', '/', $class),
             $cacheKey,
             $version
         );

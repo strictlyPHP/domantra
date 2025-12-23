@@ -8,18 +8,26 @@ use ReflectionNamedType;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInterface;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
 use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
+use StrictlyPHP\Domantra\Query\Transformer\DtoTransformer;
 
 class CachedDtoHandler
 {
+    private DtoTransformer $dtoTransformer;
+
     public function __construct(
         private DtoCacheHandlerInterface $cacheHandler,
+        ?DtoTransformer $dtoTransformer = null
     ) {
+        if ($dtoTransformer === null) {
+            $dtoTransformer = new DtoTransformer();
+        }
+        $this->dtoTransformer = $dtoTransformer;
     }
 
     /**
      * @throws ItemNotFoundException
      */
-    public function handle(\Stringable $query, DtoHandlerHandlerInterface $handler): \stdClass
+    public function handle(\Stringable $query, DtoHandlerHandlerInterface $handler, ?string $role): \stdClass
     {
         $reflection = new \ReflectionFunction(\Closure::fromCallable($handler));
         /** @var ReflectionNamedType $returnType */
@@ -33,6 +41,6 @@ class CachedDtoHandler
             $this->cacheHandler->set($dto);
         }
 
-        return $dto->jsonSerialize();
+        return $this->dtoTransformer->transform($dto, $role);
     }
 }

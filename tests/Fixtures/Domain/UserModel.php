@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace StrictlyPHP\Tests\Domantra\Fixtures\Domain;
 
 use DateTimeImmutable;
+
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 use StrictlyPHP\Domantra\Domain\UseTimestamps;
 
 #[UseTimestamps(softDelete: true)]
@@ -78,5 +80,14 @@ class UserModel extends AbstractAggregateRoot
             'username' => $this->username,
             'email' => $this->email,
         ];
+    }
+
+    public function getDto(): UserDto
+    {
+        return new UserDto(
+            $this->id,
+            $this->username,
+            $this->email
+        );
     }
 }

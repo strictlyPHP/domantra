@@ -63,7 +63,7 @@ class QueryBusTest extends TestCase
         $queryBus = new class($this->aggregateRootHandler, $this->cachedDtoHandler) extends QueryBus {
             public function exposeExpandDto(object $dto): object
             {
-                return $this->expandDto($dto);
+                return $this->expandDto($dto, null);
             }
         };
         $this->expectException(\RuntimeException::class);
