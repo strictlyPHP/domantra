@@ -93,6 +93,7 @@ class CommandBusTest extends TestCase
 
         $eventLogItem =
             new EventLogItem(
+                name: 'fooBar',
                 event: $this->createMock(EventInterface::class),
                 happenedAt: new \DateTimeImmutable(),
                 dto: (object) [
@@ -181,6 +182,7 @@ class CommandBusTest extends TestCase
 
         $eventLogItem =
             new EventLogItem(
+                name: 'fooBar',
                 event: $this->createMock(EventInterface::class),
                 happenedAt: new \DateTimeImmutable(),
                 dto: (object) [
