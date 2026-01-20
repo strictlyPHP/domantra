@@ -58,6 +58,7 @@ abstract class AbstractAggregateRoot
         }
 
         $this->_eventLogItems[] = new EventLogItem(
+            name: implode('.', array_map(fn (string $item) => lcfirst($item), $classArray)),
             event: $event,
             happenedAt: $happenedAt,
             dto : json_decode(json_encode($this->getDto()))

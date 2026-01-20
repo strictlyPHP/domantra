@@ -29,6 +29,7 @@ class AbstractAggregateRootTest extends TestCase
         $this->assertNull($model->getDeletedAt());
 
         $events = [[
+            'name' => 'strictlyPHP.tests.domantra.fixtures.domain.userWasCreated',
             'event' => [
                 'id' => '78b52d55-0d03-4c6c-a3e6-4bda7d908d32',
                 'username' => 'testuser',
@@ -73,6 +74,7 @@ class AbstractAggregateRootTest extends TestCase
 
         $events = [
             [
+                'name' => 'strictlyPHP.tests.domantra.fixtures.domain.userWasCreated',
                 'event' => [
                     'id' => '78b52d55-0d03-4c6c-a3e6-4bda7d908d32',
                     'username' => 'testuser',
@@ -89,6 +91,7 @@ class AbstractAggregateRootTest extends TestCase
                     'email' => 'test@example.com',
                 ],
             ], [
+                'name' => 'strictlyPHP.tests.domantra.fixtures.domain.usernameWasUpdated',
                 'event' => [
                     'username' => 'updateduser',
                 ],

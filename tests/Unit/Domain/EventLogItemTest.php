@@ -15,6 +15,7 @@ class EventLogItemTest extends TestCase
         $happenedAt = new \DateTimeImmutable('2023-10-01 12:00:00');
         $dto = new \stdClass();
         $eventLogItem = new EventLogItem(
+            name: 'fooBar',
             event: $event,
             happenedAt: $happenedAt,
             dto: $dto
