@@ -14,7 +14,7 @@ interface QueryBusInterface
      * @param class-string $queryClass
      * @param PaginatedHandlerInterface<T> $handler
      */
-    public function registerHandler(string $queryClass, PaginatedHandlerInterface $handler): void;
+    public function registerHandler(string $queryClass, PaginatedHandlerInterface $handler, bool $allowExpansion = false): void;
 
     public function handle(object $query, ?string $role = null): ResponseInterface;
 }

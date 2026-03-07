@@ -20,6 +20,11 @@ class QueryBus implements QueryBusInterface
      */
     private array $handlers = [];
 
+    /**
+     * @var array<class-string, bool>
+     */
+    private array $allowExpansion = [];
+
     public function __construct(
         private AggregateRootHandler $aggregateRootHandler,
         private CachedDtoHandler $cachedDtoHandler
@@ -29,9 +34,10 @@ class QueryBus implements QueryBusInterface
     /**
      * @param class-string $queryClass
      */
-    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface|DtoHandlerHandlerInterface $handler): void
+    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface|DtoHandlerHandlerInterface $handler, bool $allowExpansion = false): void
     {
         $this->handlers[$queryClass] = $handler;
+        $this->allowExpansion[$queryClass] = $allowExpansion;
     }
 
     /**
@@ -83,7 +89,10 @@ class QueryBus implements QueryBusInterface
         foreach (get_object_vars($dto) as $property => $value) {
             if (is_object($value) && $property !== 'id') {
                 $class = get_class($value);
-                if (isset($this->handlers[$class])) {
+                if (
+                    isset($this->handlers[$class]) &&
+                    ($this->allowExpansion[$class] ?? false) === true
+                ) {
                     $handler = $this->handlers[$class];
                     try {
                         if ($handler instanceof DtoHandlerHandlerInterface) {
