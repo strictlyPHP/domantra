@@ -93,5 +93,10 @@ abstract class AbstractAggregateRoot
         $this->_eventLogItems = [];
     }
 
+    public function hasPendingEvents(): bool
+    {
+        return sizeof($this->_eventLogItems) > 0;
+    }
+
     abstract public function getDto(): CachedDtoInterface;
 }

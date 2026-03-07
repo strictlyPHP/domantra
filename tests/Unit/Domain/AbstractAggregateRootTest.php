@@ -47,6 +47,7 @@ class AbstractAggregateRootTest extends TestCase
             ],
         ], ];
         $this->assertEquals($events, json_decode(json_encode($model->_getEventLogItems()), true));
+        $this->assertTrue($model->hasPendingEvents());
     }
 
     public function testRecordAndApplyThatUpdates(): void
@@ -108,5 +109,6 @@ class AbstractAggregateRootTest extends TestCase
             ],
         ];
         $this->assertEquals($events, json_decode(json_encode($model->_getEventLogItems()), true));
+        $this->assertTrue($model->hasPendingEvents());
     }
 }

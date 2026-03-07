@@ -87,6 +87,13 @@ class QueryBusTest extends TestCase
         $handlers['stdClass'] = $invalidHandler;
         $handlersProperty->setValue($queryBus, $handlers);
 
+        // Also set the allowExpansion flag for stdClass
+        $allowExpansionProperty = $reflection->getProperty('allowExpansion');
+        $allowExpansionProperty->setAccessible(true);
+        $allowExpansion = $allowExpansionProperty->getValue($queryBus);
+        $allowExpansion['stdClass'] = true;
+        $allowExpansionProperty->setValue($queryBus, $allowExpansion);
+
         // Create a test DTO with a property that will use the invalid handler
         $dto = (object) [
             'test' => (object) [
@@ -141,7 +148,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -228,7 +235,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $handler1);
-        $this->queryBus->registerHandler(ProfileId::class, $handler2);
+        $this->queryBus->registerHandler(ProfileId::class, $handler2, true);
 
         $expectedCalls = [
             [
