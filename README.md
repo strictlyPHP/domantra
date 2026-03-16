@@ -10,129 +10,155 @@ A PHP library implementing Domain-Driven Design (DDD) patterns and CQRS architec
 
 - Command and Query Buses for CQRS
 - Domain Event Dispatching
-- Pluggable Caching and Logging
-- Easy integration with existing PHP projects
+- Automatic DTO Caching (InMemory, Redis, Predis)
+- Role-Based Property Access Control
+- Paginated Query Support with DTO Expansion
+- Pluggable Logging via PSR-3
 
 ## Requirements
 
 - PHP 8.2 or higher
 - Composer 2.0+
 
-## Basic Usage
+## Installation
 
-It's recommended to use value objects for identifiers in your domain models.
+```bash
+composer require strictlyphp/domantra
+```
+
+## Quick Start
+
+### 1. Define a Value Object ID
+
+IDs must implement `\Stringable` for cache key resolution:
 
 ```php
-
 namespace App\ValueObject;
 
-class UserId
+use StrictlyPHP\Domantra\ValueObject\StringValueObject;
+use StrictlyPHP\Domantra\ValueObject\ValueObject;
+
+class UserId implements StringValueObject
 {
-    public function __construct(
-        public readonly string $value
-    ) {}
+    public function __construct(private readonly string $id) {}
+
+    public function __toString(): string { return $this->id; }
+    public function jsonSerialize(): string { return $this->id; }
+    public function equals(ValueObject $other): bool
+    {
+        return $other instanceof self && $this->id === $other->id;
+    }
 }
 ```
-Create your domain models:
- * Your domain models should extend the `StrictlyPHP\Domantra\Domain\AbstractAggregateRoot` class.
- * Your event classes should implement the `StrictlyPHP\Domantra\Command\EventInterface`.
- * The UseTimestamps attribute can be used to automatically handle createdAt, updatedAt and deletedAt timestamps.
- * Use the `recordAndApplyThat` method to record an event and apply it to the model.
 
-Your event class will look like this:
+### 2. Create an Event
+
+Events implement `EventInterface` and carry data only — no timestamps:
+
 ```php
 namespace App\Domain\User\Event;
 
 use StrictlyPHP\Domantra\Command\EventInterface;
+use App\ValueObject\UserId;
 
 readonly class UserWasCreated implements EventInterface
 {
     public function __construct(
-        public readonly UserId $id,
-        public readonly string $username,
-        public readonly string $email,
-        public readonly DateTimeImmutable $happenedAt
+        public UserId $id,
+        public string $username,
+        public string $email
     ) {}
 }
-````
+```
 
-Your domain model will look like this:
+### 3. Create a DTO
+
+DTOs implement `CachedDtoInterface` for automatic caching:
 
 ```php
 namespace App\Domain\User;
 
+use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
+use App\ValueObject\UserId;
+
+readonly class UserDto implements CachedDtoInterface
+{
+    public function __construct(
+        public UserId $id,
+        public string $username,
+        public string $email
+    ) {}
+
+    public function getCacheKey(): string { return (string) $this->id; }
+    public function getTtl(): int { return 3600; }
+}
+```
+
+### 4. Build the Aggregate Root
+
+```php
+namespace App\Domain\User;
+
+use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 use StrictlyPHP\Domantra\Domain\UseTimestamps;
 use App\ValueObject\UserId;
-use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 use App\Domain\User\Event\UserWasCreated;
 
 #[UseTimestamps]
 class User extends AbstractAggregateRoot
 {
-    public readonly UserId $id;
-    public readonly string $username;
-    public readonly string $email;
-    
-    public function __construct(
-    ) {}
-    
+    private UserId $id;
+    private string $username;
+    private string $email;
+
     public static function create(
         UserId $id,
         string $username,
         string $email,
-        DateTimeImmutable $happenedAt
+        \DateTimeImmutable $happenedAt
     ): self {
         $user = new self();
-        $model->recordAndApplyThat(
-            new UserWasCreated(
-                $id,
-                $username,
-                $email,
-                $happenedAt
-            )  
+        $user->recordAndApplyThat(
+            new UserWasCreated($id, $username, $email),
+            $happenedAt
         );
-        return $user;   
+        return $user;
     }
-    
-    public function applyThatUserWasCreated(UserWasCreated $event): void
+
+    protected function applyThatUserWasCreated(UserWasCreated $event): void
     {
         $this->id = $event->id;
         $this->username = $event->username;
         $this->email = $event->email;
-    }   
-}
-```
+    }
 
-### Command Handling
-
-Your command will look like this:
-```php
-
-namespace App\Domain\User\Command;
-
-use App\ValueObject\UserId;
-use DateTimeImmutable;
-
-class CreateUserCommand
-{
-    public UserId $id;
-    public string $username;
-    public string $email;
-
-    public function __construct(UserId $id, string $username, string $email, DateTimeImmutable $happenedAt)
+    public function getDto(): UserDto
     {
-        $this->id = $id;
-        $this->username = $username;
-        $this->email = $email;
-        $this->happenedAt = $happenedAt;   
+        return new UserDto($this->id, $this->username, $this->email);
     }
 }
 ```
 
-Your command handler will look like this:
+### 5. Command & Handler
 
 ```php
+namespace App\Domain\User\Command;
 
+use StrictlyPHP\Domantra\Command\CommandInterface;
+use App\ValueObject\UserId;
+
+class CreateUserCommand implements CommandInterface
+{
+    public function __construct(
+        public readonly UserId $id,
+        public readonly string $username,
+        public readonly string $email,
+        public readonly \DateTimeImmutable $happenedAt
+    ) {}
+}
+```
+
+```php
 namespace App\Domain\User\Command;
 
 use App\Domain\User\User;
@@ -147,70 +173,84 @@ class CreateUserHandler
             $command->email,
             $command->happenedAt
         );
-        
-        /** 
-            Add your own code to persist the user entity (e.g., save to a database) 
-        **/
-        
+
+        // Persist the user (e.g., save to database)
+
         return $user;
     }
 }
-
 ```
 
-The system will automatically cache your models, dispatch events for you and update timestamps if you used the `UseTimestamps` attribute.
-
-You can then use the command bus to dispatch the command:
+### 6. Dispatch via Command Bus
 
 ```php
-
-use Domantra\CommandBus;
+use StrictlyPHP\Domantra\Command\CommandBus;
+use App\Domain\User\Command\CreateUserCommand;
+use App\Domain\User\Command\CreateUserHandler;
+use App\ValueObject\UserId;
 
 $commandBus = CommandBus::create();
 $commandBus->registerHandler(CreateUserCommand::class, new CreateUserHandler());
 
-$command = new CreateUserCommand('john_doe', 'john@example.com');
-$commandBus->dispatch($command);
+$commandBus->dispatch(new CreateUserCommand(
+    new UserId('user-123'),
+    'john_doe',
+    'john@example.com',
+    new \DateTimeImmutable()
+));
 ```
 
-### Query Handling
+The bus automatically dispatches events and caches the DTO.
+
+### 7. Query Handling
 
 ```php
-<?php
-
 namespace App\Domain\User\Query;
 
-use App\ValueObject\UserId;
+use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use App\Domain\User\User;
 
-class GetUserByIdHandler
+class GetUserByIdHandler implements SingleHandlerInterface
 {
-    public function __invoke(UserId $query) : User
+    public function __invoke(object $query): User
     {
-        // Fetch user data by ID (e.g., from a database)
-        // Return user data as an array or DTO
-        return [
-            'id' => $query->userId,
-            'username' => 'john_doe',
-            'email' => 'john@example.com',
-        ];
+        // Fetch user from database by $query (a UserId)
+        // Return the reconstructed aggregate root
     }
 }
 ```
 
-You can then use the query bus to dispatch the query:
-
 ```php
+use StrictlyPHP\Domantra\Query\QueryBus;
+use StrictlyPHP\Domantra\Query\AggregateRootHandler;
+use StrictlyPHP\Domantra\Query\CachedDtoHandler;
+use StrictlyPHP\Domantra\Cache\DtoCacheHandlerInMemory;
+use App\ValueObject\UserId;
 
-use Domantra\QueryBus;
+$cacheHandler = new DtoCacheHandlerInMemory();
+$queryBus = new QueryBus(
+    new AggregateRootHandler($cacheHandler),
+    new CachedDtoHandler($cacheHandler)
+);
 
-$queryBus = new QueryBus();
 $queryBus->registerHandler(UserId::class, new GetUserByIdHandler());
 
-$userId = new UserId('user-1');
-$result = $queryBus->dispatch($userId);
-
+$response = $queryBus->handle(new UserId('user-123'));
+// Returns ModelResponse with $response->item
 ```
 
-The system will try to fetch the model from the cache first, and if it's not found, it will dispatch the query to the handler.
+The query bus checks the cache first. On a miss, it invokes the handler, caches the DTO, and returns it.
 
+## Documentation
+
+For detailed guides on all features, see the [docs/](docs/README.md) directory:
+
+- [Installation](docs/installation.md)
+- [Value Objects](docs/value-objects.md)
+- [Aggregate Roots](docs/aggregate-roots.md)
+- [Events](docs/events.md)
+- [DTOs & Caching](docs/dtos-and-caching.md)
+- [Commands](docs/commands.md)
+- [Queries](docs/queries.md) — pagination, expansion, handler types
+- [Role-Based Access](docs/role-based-access.md)
+- [Clock](docs/clock.md) — time abstraction for testing
