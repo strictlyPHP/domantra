@@ -1,3 +1,5 @@
-Changelog for version 0.0.7
+Changelog for version 0.0.8
 
-- add event name to event log item (Ken Lalobo)
+- Add union type support for query handlers (Ken Lalobo)
+- fixes after review (Ken Lalobo)
+- add expasion argument (Ken Lalobo)
