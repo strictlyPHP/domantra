@@ -77,7 +77,7 @@ interface DtoCacheHandlerInterface
 |-------|---------|------------|
 | `DtoCacheHandlerInMemory` | PHP array (per-request) | None |
 | `DtoCacheHandlerRedis` | phpredis extension | `ext-redis` |
-| `DtoCacheHandlerPredis` | Predis library | `predis/predis` |
+| `DtoCacheHandlerPredis` | Predis library | `predis/predis` (required) |
 
 All three extend `AbstractDtoCacheHandler` which provides the key generation and fingerprinting logic.
 
