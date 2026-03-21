@@ -29,8 +29,9 @@ abstract class AbstractAggregateRoot
 
     protected function recordAndApplyThat(
         EventInterface $event,
-        \DateTimeImmutable $happenedAt,
+        \DateTimeInterface $happenedAt,
     ): void {
+        $happenedAt = \DateTimeImmutable::createFromInterface($happenedAt);
         $classArray = explode('\\', get_class($event));
         $class = end($classArray);
         $method = sprintf('applyThat%s', $class);
