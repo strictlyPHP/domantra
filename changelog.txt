@@ -1,5 +1,9 @@
-Changelog for version 0.0.8
+Changelog for version 0.0.9
 
-- Add union type support for query handlers (Ken Lalobo)
-- fixes after review (Ken Lalobo)
-- add expasion argument (Ken Lalobo)
+- Convert incoming DateTimeInterface to DateTimeImmutable before storing (Ken Lalobo)
+- Use DateTimeInterface in signatures instead of DateTimeImmutable (Ken Lalobo)
+- Prevent expanded property from clobbering existing properties (Ken Lalobo)
+- Guard against empty expanded property name when property is exactly "Id" (Ken Lalobo)
+- Add non-destructive DTO expansion and testing docs (Ken Lalobo)
+- Fix docs to reflect predis/predis as a required dependency (Ken Lalobo)
+- Fix README bugs and add comprehensive documentation (Ken Lalobo)
