@@ -11,7 +11,7 @@ readonly class EventLogItem
     public function __construct(
         public string $name,
         public EventInterface $event,
-        public \DateTimeInterface $happenedAt,
+        public \DateTimeImmutable $happenedAt,
         public \stdClass $dto,
     ) {
     }

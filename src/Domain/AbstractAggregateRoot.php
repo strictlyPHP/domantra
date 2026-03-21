@@ -8,11 +8,11 @@ use StrictlyPHP\Domantra\Command\EventInterface;
 
 abstract class AbstractAggregateRoot
 {
-    protected \DateTimeInterface $createdAt;
+    protected \DateTimeImmutable $createdAt;
 
-    protected ?\DateTimeInterface $updatedAt;
+    protected ?\DateTimeImmutable $updatedAt;
 
-    protected ?\DateTimeInterface $deletedAt;
+    protected ?\DateTimeImmutable $deletedAt;
 
     /**
      * @var EventLogItem[]
@@ -31,6 +31,7 @@ abstract class AbstractAggregateRoot
         EventInterface $event,
         \DateTimeInterface $happenedAt,
     ): void {
+        $happenedAt = \DateTimeImmutable::createFromInterface($happenedAt);
         $classArray = explode('\\', get_class($event));
         $class = end($classArray);
         $method = sprintf('applyThat%s', $class);
@@ -65,17 +66,17 @@ abstract class AbstractAggregateRoot
         );
     }
 
-    public function getCreatedAt(): \DateTimeInterface
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): ?\DateTimeInterface
+    public function getUpdatedAt(): ?\DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
-    public function getDeletedAt(): ?\DateTimeInterface
+    public function getDeletedAt(): ?\DateTimeImmutable
     {
         return $this->deletedAt;
     }
