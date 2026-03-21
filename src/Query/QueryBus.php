@@ -87,6 +87,8 @@ class QueryBus implements QueryBusInterface
         $expanded = (object) [];
 
         foreach (get_object_vars($dto) as $property => $value) {
+            $expanded->$property = $value;
+
             if (is_object($value) && $property !== 'id') {
                 $class = get_class($value);
                 if (
@@ -96,20 +98,31 @@ class QueryBus implements QueryBusInterface
                     $handler = $this->handlers[$class];
                     try {
                         if ($handler instanceof DtoHandlerHandlerInterface) {
-                            $value = $this->cachedDtoHandler->handle($value, $handler, $role);
+                            $expandedValue = $this->cachedDtoHandler->handle($value, $handler, $role);
                         } elseif ($handler instanceof SingleHandlerInterface) {
-                            $value = $this->aggregateRootHandler->handle($value, $handler, $role);
+                            $expandedValue = $this->aggregateRootHandler->handle($value, $handler, $role);
                         } else {
                             throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
                         }
                     } catch (ItemNotFoundException $e) {
-                        $value = null;
+                        $expandedValue = null;
                     }
+
+                    $expandedProperty = $this->getExpandedPropertyName($property);
+                    $expanded->$expandedProperty = $expandedValue;
                 }
             }
-            $expanded->$property = $value;
         }
 
         return $expanded;
+    }
+
+    private function getExpandedPropertyName(string $property): string
+    {
+        if (str_ends_with($property, 'Id')) {
+            return substr($property, 0, -2);
+        }
+
+        return $property . 'Expanded';
     }
 }

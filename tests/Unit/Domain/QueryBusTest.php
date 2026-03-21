@@ -13,6 +13,7 @@ use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use StrictlyPHP\Domantra\Query\QueryBus;
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\ProfileId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserQuery;
@@ -165,7 +166,8 @@ class QueryBusTest extends TestCase
         $expandedDto = (object) [
             'id' => $userId,
             'name' => 'Test Name',
-            'profile' => (object) [
+            'profile' => $profileId,
+            'profileExpanded' => (object) [
                 'id' => $profileId,
                 'bio' => 'Test Bio',
             ],
@@ -230,7 +232,8 @@ class QueryBusTest extends TestCase
 
         $expandedDto = (object) [
             'id' => $query,
-            'profile' => $profileDto,
+            'profile' => $profileId,
+            'profileExpanded' => $profileDto,
             'name' => 'Test Name',
         ];
 
@@ -266,6 +269,95 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($query);
 
+        $expected = (object) [
+            'item' => $expandedDto,
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testExpandDtoStripsIdSuffixFromPropertyName(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $userDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+        ];
+
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'Test Bio',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willReturn($profileDto);
+
+        $response = $this->queryBus->handle($userId);
+
+        $expandedDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+            'profile' => (object) [
+                'id' => $profileId,
+                'bio' => 'Test Bio',
+            ],
+        ];
+        $expected = (object) [
+            'item' => $expandedDto,
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testExpandDtoSetsNullWhenItemNotFound(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $userDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+        ];
+
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willThrowException(new ItemNotFoundException('Not found'));
+
+        $response = $this->queryBus->handle($userId);
+
+        $expandedDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+            'profile' => null,
+        ];
         $expected = (object) [
             'item' => $expandedDto,
         ];
