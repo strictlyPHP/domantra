@@ -241,6 +241,20 @@ $response = $queryBus->handle(new UserId('user-123'));
 
 The query bus checks the cache first. On a miss, it invokes the handler, caches the DTO, and returns it.
 
+## Testing
+
+All commands run inside Docker — no local PHP extensions are required.
+
+```bash
+make install           # Install dependencies
+make check-coverage    # Run tests with coverage check on changed files
+make style             # Check coding style
+make style-fix         # Auto-fix coding style
+make analyze           # Run static analysis (PHPStan)
+```
+
+Run `make help` to see all available commands.
+
 ## Documentation
 
 For detailed guides on all features, see the [docs/](docs/README.md) directory:

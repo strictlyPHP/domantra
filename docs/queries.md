@@ -140,6 +140,17 @@ When a `UserDto` has a `public TeamId $team` property, the query bus will:
 1. Detect the `TeamId` object
 2. Find a registered handler for `TeamId`
 3. Resolve it to the team's DTO (via `SingleHandlerInterface` or `DtoHandlerHandlerInterface`)
-4. Replace the `TeamId` with the expanded data
+4. Keep the original property unchanged and add the expanded data as a **new property**
+
+### Expanded Property Naming
+
+The new property name is derived from the original property name:
+
+- If the property name ends in `Id` (case-sensitive), the `Id` suffix is stripped: `teamId` → `team`
+- Otherwise, `Expanded` is appended: `team` → `teamExpanded`
+
+For example, given `public TeamId $teamId`, the result will contain both `teamId` (the original `TeamId` object) and `team` (the expanded DTO).
+
+Given `public TeamId $team`, the result will contain both `team` (the original `TeamId` object) and `teamExpanded` (the expanded DTO).
 
 The `id` property is excluded from expansion.
