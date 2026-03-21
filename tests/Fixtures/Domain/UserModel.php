@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Tests\Domantra\Fixtures\Domain;
 
-use DateTimeImmutable;
+use DateTimeInterface;
 
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
@@ -23,7 +23,7 @@ class UserModel extends AbstractAggregateRoot
         UserId $id,
         string $username,
         string $email,
-        DateTimeImmutable $createdAt,
+        DateTimeInterface $createdAt,
     ): self {
         $model = new self();
         $model->recordAndApplyThat(
@@ -40,7 +40,7 @@ class UserModel extends AbstractAggregateRoot
         $this->email = $event->email;
     }
 
-    public function updateUsername(string $username, DateTimeImmutable $happenedAt): void
+    public function updateUsername(string $username, DateTimeInterface $happenedAt): void
     {
         $this->recordAndApplyThat(
             new UsernameWasUpdated($username),
