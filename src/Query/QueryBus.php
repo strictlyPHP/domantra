@@ -119,7 +119,7 @@ class QueryBus implements QueryBusInterface
 
     private function getExpandedPropertyName(string $property): string
     {
-        if (str_ends_with($property, 'Id')) {
+        if (str_ends_with($property, 'Id') && strlen($property) > 2) {
             return substr($property, 0, -2);
         }
 
