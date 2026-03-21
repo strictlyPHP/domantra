@@ -109,7 +109,9 @@ class QueryBus implements QueryBusInterface
                     }
 
                     $expandedProperty = $this->getExpandedPropertyName($property);
-                    $expanded->$expandedProperty = $expandedValue;
+                    if (! property_exists($expanded, $expandedProperty)) {
+                        $expanded->$expandedProperty = $expandedValue;
+                    }
                 }
             }
         }
