@@ -41,6 +41,10 @@ class DtoCacheHandlerRedis extends AbstractDtoCacheHandler
 
     public function set(CachedDtoInterface $dto): void
     {
+        if ($dto->getTtl() <= 0) {
+            return;
+        }
+
         $generatedKey = $this->getKey($dto->getCacheKey(), get_class($dto));
         $this->redis->set(
             $generatedKey,
