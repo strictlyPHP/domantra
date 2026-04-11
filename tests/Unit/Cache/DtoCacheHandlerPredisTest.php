@@ -13,6 +13,7 @@ use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 class DtoCacheHandlerPredisTest extends TestCase
 {
     private Client & MockObject $client;
+
     private DtoCacheHandlerPredis $handler;
 
     protected function setUp(): void

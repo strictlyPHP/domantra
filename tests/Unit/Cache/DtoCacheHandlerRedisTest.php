@@ -12,6 +12,7 @@ use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 class DtoCacheHandlerRedisTest extends TestCase
 {
     private \Redis & MockObject $redis;
+
     private DtoCacheHandlerRedis $handler;
 
     protected function setUp(): void

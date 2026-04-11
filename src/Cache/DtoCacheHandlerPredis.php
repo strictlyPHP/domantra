@@ -42,7 +42,9 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
 
     public function set(CachedDtoInterface $dto): void
     {
-        if ($dto->getTtl() <= 0) {
+        $ttl = $dto->getTtl();
+
+        if ($ttl <= 0) {
             return;
         }
 
@@ -52,7 +54,7 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
             $generatedKey,
             $data,
             'EX',
-            $dto->getTtl()
+            $ttl
         );
     }
 
