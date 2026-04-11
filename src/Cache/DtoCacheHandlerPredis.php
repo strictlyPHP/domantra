@@ -42,13 +42,19 @@ class DtoCacheHandlerPredis extends AbstractDtoCacheHandler
 
     public function set(CachedDtoInterface $dto): void
     {
+        $ttl = $dto->getTtl();
+
+        if ($ttl <= 0) {
+            return;
+        }
+
         $generatedKey = $this->getKey($dto->getCacheKey(), get_class($dto));
         $data = serialize($dto);
         $this->client->set(
             $generatedKey,
             $data,
             'EX',
-            $dto->getTtl()
+            $ttl
         );
     }
 
