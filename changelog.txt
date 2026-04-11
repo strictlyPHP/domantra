@@ -1,9 +1,4 @@
-Changelog for version 0.0.9
+Changelog for version 0.0.10
 
-- Convert incoming DateTimeInterface to DateTimeImmutable before storing (Ken Lalobo)
-- Use DateTimeInterface in signatures instead of DateTimeImmutable (Ken Lalobo)
-- Prevent expanded property from clobbering existing properties (Ken Lalobo)
-- Guard against empty expanded property name when property is exactly "Id" (Ken Lalobo)
-- Add non-destructive DTO expansion and testing docs (Ken Lalobo)
-- Fix docs to reflect predis/predis as a required dependency (Ken Lalobo)
-- Fix README bugs and add comprehensive documentation (Ken Lalobo)
+- refactor: cache TTL in local variable to avoid double getTtl() call (Ken Lalobo)
+- fix: skip Redis set when TTL is zero or negative (Ken Lalobo)
