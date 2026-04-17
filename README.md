@@ -265,6 +265,6 @@ For detailed guides on all features, see the [docs/](docs/README.md) directory:
 - [Events](docs/events.md)
 - [DTOs & Caching](docs/dtos-and-caching.md)
 - [Commands](docs/commands.md)
-- [Queries](docs/queries.md) — pagination, expansion, handler types
+- [Queries](docs/queries.md) — pagination, selective expansion, handler types
 - [Role-Based Access](docs/role-based-access.md)
 - [Clock](docs/clock.md) — time abstraction for testing

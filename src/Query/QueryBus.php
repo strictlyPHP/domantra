@@ -42,9 +42,11 @@ class QueryBus implements QueryBusInterface
     }
 
     /**
+     * @param list<string>|null $expand See {@see QueryBusInterface::handle()} for semantics.
+     *
      * @throws ItemNotFoundException
      */
-    public function handle(object $query, ?string $role = null): ResponseInterface
+    public function handle(object $query, ?string $role = null, ?array $expand = null): ResponseInterface
     {
         $class = get_class($query);
         if (! isset($this->handlers[$class])) {
@@ -54,7 +56,7 @@ class QueryBus implements QueryBusInterface
 
         if ($handler instanceof SingleHandlerInterface) {
             if ($query instanceof \Stringable) {
-                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler, $role), $role));
+                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler, $role), $role, $expand));
             } else {
                 throw new \RuntimeException(sprintf('Query must implement %s when the return type is %s', \Stringable::class, AbstractAggregateRoot::class));
             }
@@ -67,7 +69,8 @@ class QueryBus implements QueryBusInterface
                 $idHandler = $this->handlers[$idClass];
                 $items[] = $this->expandDto(
                     $this->aggregateRootHandler->handle($id, $idHandler, $role),
-                    $role
+                    $role,
+                    $expand
                 );
             }
 
@@ -83,38 +86,53 @@ class QueryBus implements QueryBusInterface
         }
     }
 
-    protected function expandDto(object $dto, ?string $role): object
+    /**
+     * @param list<string>|null $expand See {@see QueryBusInterface::handle()} for semantics.
+     */
+    protected function expandDto(object $dto, ?string $role, ?array $expand = null): object
     {
         $expanded = (object) [];
 
+        // Two passes so raw properties always win a name collision with a derived
+        // expanded key, regardless of declaration order. A DTO with both `profileId`
+        // and `profile` would otherwise see `profile` (expansion of `profileId`)
+        // overwritten by the raw `profile` field when iterated after it.
         foreach (get_object_vars($dto) as $property => $value) {
             $expanded->$property = $value;
+        }
 
-            if (is_object($value) && $property !== 'id') {
-                $class = get_class($value);
-                if (
-                    isset($this->handlers[$class]) &&
-                    ($this->allowExpansion[$class] ?? false) === true
-                ) {
-                    $handler = $this->handlers[$class];
-                    try {
-                        if ($handler instanceof DtoHandlerHandlerInterface) {
-                            $expandedValue = $this->cachedDtoHandler->handle($value, $handler, $role);
-                        } elseif ($handler instanceof SingleHandlerInterface) {
-                            $expandedValue = $this->aggregateRootHandler->handle($value, $handler, $role);
-                        } else {
-                            throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
-                        }
-                    } catch (ItemNotFoundExceptionInterface $e) {
-                        $expandedValue = null;
-                    }
-
-                    $expandedProperty = $this->getExpandedPropertyName($property);
-                    if (! property_exists($expanded, $expandedProperty)) {
-                        $expanded->$expandedProperty = $expandedValue;
-                    }
-                }
+        foreach (get_object_vars($dto) as $property => $value) {
+            if (! is_object($value) || $property === 'id') {
+                continue;
             }
+            if ($expand !== null && ! in_array($property, $expand, true)) {
+                continue;
+            }
+
+            $class = get_class($value);
+            if (! isset($this->handlers[$class]) || ($this->allowExpansion[$class] ?? false) !== true) {
+                continue;
+            }
+
+            $expandedProperty = $this->getExpandedPropertyName($property);
+            if (property_exists($expanded, $expandedProperty)) {
+                continue;
+            }
+
+            $handler = $this->handlers[$class];
+            try {
+                if ($handler instanceof DtoHandlerHandlerInterface) {
+                    $expandedValue = $this->cachedDtoHandler->handle($value, $handler, $role);
+                } elseif ($handler instanceof SingleHandlerInterface) {
+                    $expandedValue = $this->aggregateRootHandler->handle($value, $handler, $role);
+                } else {
+                    throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
+                }
+            } catch (ItemNotFoundExceptionInterface $e) {
+                $expandedValue = null;
+            }
+
+            $expanded->$expandedProperty = $expandedValue;
         }
 
         return $expanded;

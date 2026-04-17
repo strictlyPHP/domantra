@@ -16,6 +16,7 @@ use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
 use StrictlyPHP\Domantra\Query\QueryBus;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\ProfileId;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\TeamId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserQuery;
 
@@ -440,5 +441,396 @@ class QueryBusTest extends TestCase
         $this->expectExceptionMessage('boom');
 
         $this->queryBus->handle($userId);
+    }
+
+    public function testHandleWithNullExpandListExpandsEveryEligibleProperty(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+            'teamId' => $teamId,
+        ];
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'bio',
+        ];
+        $teamDto = (object) [
+            'id' => $teamId,
+            'name' => 'team',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->exactly(2))->method('handle')->willReturnCallback(
+            fn ($id) => $id === $profileId ? $profileDto : $teamDto
+        );
+
+        $response = $this->queryBus->handle($userId, null, null);
+
+        $expected = (object) [
+            'item' => (object) [
+                'id' => $userId,
+                'profileId' => $profileId,
+                'profile' => $profileDto,
+                'teamId' => $teamId,
+                'team' => $teamDto,
+            ],
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testHandleWithEmptyExpandListExpandsNothing(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, []);
+
+        $expected = (object) [
+            'item' => (object) [
+                'id' => $userId,
+                'profileId' => $profileId,
+            ],
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testHandleWithExpandListExpandsOnlyNamedProperty(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+            'teamId' => $teamId,
+        ];
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'bio',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willReturn($profileDto);
+
+        $response = $this->queryBus->handle($userId, null, ['profileId']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($profileDto, $responseItem->profile);
+        $this->assertSame($teamId, $responseItem->teamId);
+        $this->assertFalse(property_exists($responseItem, 'team'), 'team should not be expanded when not in the expand list');
+    }
+
+    public function testHandleWithExpandListIgnoresUnknownNames(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, ['doesNotExist']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertFalse(property_exists($responseItem, 'profile'));
+        $this->assertSame($profileId, $responseItem->profileId);
+    }
+
+    public function testHandleWithExpandListStillHonoursAllowExpansionFalse(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, false);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, ['profileId']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertFalse(property_exists($responseItem, 'profile'), 'allowExpansion=false must not be overridden by expand list');
+    }
+
+    public function testHandleWithExpandListAppliesToEveryItemInPaginatedResponse(): void
+    {
+        $query = new UserQuery();
+        $userIdA = new UserId('user-a');
+        $userIdB = new UserId('user-b');
+        $profileIdA = new ProfileId('profile-a');
+        $profileIdB = new ProfileId('profile-b');
+        $teamIdA = new TeamId('team-a');
+        $teamIdB = new TeamId('team-b');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $paginatedHandler = $this->createMock(PaginatedHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDtoA = (object) [
+            'id' => $userIdA,
+            'profileId' => $profileIdA,
+            'teamId' => $teamIdA,
+        ];
+        $userDtoB = (object) [
+            'id' => $userIdB,
+            'profileId' => $profileIdB,
+            'teamId' => $teamIdB,
+        ];
+        $profileDtoA = (object) [
+            'id' => $profileIdA,
+        ];
+        $profileDtoB = (object) [
+            'id' => $profileIdB,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(UserQuery::class, $paginatedHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+
+        $paginatedHandler->expects($this->once())
+            ->method('__invoke')
+            ->with($query)
+            ->willReturn(new PaginatedIdCollection(ids: [$userIdA, $userIdB], page: 1, perPage: 10, totalItems: 2));
+
+        $this->aggregateRootHandler->expects($this->exactly(2))
+            ->method('handle')
+            ->willReturnCallback(fn ($id) => $id === $userIdA ? $userDtoA : $userDtoB);
+
+        $this->cachedDtoHandler->expects($this->exactly(2))
+            ->method('handle')
+            ->willReturnCallback(fn ($id) => $id === $profileIdA ? $profileDtoA : $profileDtoB);
+
+        $response = $this->queryBus->handle($query, null, ['profileId']);
+
+        $items = $response->jsonSerialize()->items;
+        $this->assertCount(2, $items);
+
+        // Each item gets its own profile DTO — guards against a regression that
+        // maps the same expansion result to every paginated item.
+        $this->assertSame($profileIdA, $items[0]->profileId);
+        $this->assertSame($profileDtoA, $items[0]->profile);
+        $this->assertSame($profileIdB, $items[1]->profileId);
+        $this->assertSame($profileDtoB, $items[1]->profile);
+
+        foreach ($items as $item) {
+            $this->assertFalse(property_exists($item, 'team'), 'team should not be expanded on any paginated item');
+        }
+    }
+
+    public function testHandleWithExpandListMatchesOnOriginalPropertyNameForNonIdField(): void
+    {
+        $userId = new UserId('test-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'team' => $teamId,
+        ];
+        $teamDto = (object) [
+            'id' => $teamId,
+            'name' => 'team',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->once())->method('handle')->with($teamId, $teamHandler)->willReturn($teamDto);
+
+        $response = $this->queryBus->handle($userId, null, ['team']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($teamDto, $responseItem->teamExpanded);
+    }
+
+    public function testHandleWithExpandListDoesNotMatchOnExpandedOutputName(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        // Passing the *expanded* output key ("profile") must not expand the source field ("profileId").
+        $response = $this->queryBus->handle($userId, null, ['profile']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertFalse(property_exists($responseItem, 'profile'));
+        // The source field must survive a filter reject — guards against a regression
+        // that wipes the original property when the expand list doesn't match.
+        $this->assertSame($profileId, $responseItem->profileId);
+    }
+
+    public function testHandleWithExpandListSilentlySkipsNullValuedProperty(): void
+    {
+        $userId = new UserId('test-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => null,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, ['profileId']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertNull($responseItem->profileId);
+        $this->assertFalse(property_exists($responseItem, 'profile'), 'null value must not be expanded even when named in the list');
+    }
+
+    public function testHandleWithExpandListContainingIdIsSilentNoOp(): void
+    {
+        $userId = new UserId('test-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+        ];
+
+        // Registered with allowExpansion=true so that a regression deleting the
+        // `$property === 'id'` guard in expandDto is not absorbed by the
+        // authorization check; only the id guard prevents a second handle() call.
+        $this->queryBus->registerHandler(UserId::class, $userHandler, true);
+
+        // Exactly one invocation: the top-level handle(). A second invocation
+        // would mean the `id` field was re-resolved through expansion.
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $response = $this->queryBus->handle($userId, null, ['id']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($userId, $responseItem->id);
+        $this->assertFalse(property_exists($responseItem, 'idExpanded'));
+    }
+
+    public function testExpansionResultSurvivesRawPropertyWithCollidingName(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'bio',
+        ];
+
+        // DTO carries both `profileId` (the id reference) and a raw `profile`
+        // field pointing at the same ProfileId. The expansion of `profileId`
+        // derives the key `profile`, which collides with the raw field. Raw
+        // fields must win deterministically — the expansion of `profile`
+        // itself still produces `profileExpanded`.
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+            'profile' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        // Called exactly once: expansion for `profileId` is short-circuited
+        // because the derived key `profile` already exists as a raw property.
+        // Expansion for the raw `profile` field still runs (→ profileExpanded).
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willReturn($profileDto);
+
+        $response = $this->queryBus->handle($userId);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($profileId, $responseItem->profile, 'raw `profile` field must not be overwritten by expansion of `profileId`');
+        $this->assertSame($profileDto, $responseItem->profileExpanded);
     }
 }

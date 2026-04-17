@@ -111,6 +111,8 @@ $response = $queryBus->handle(new ListUsersQuery(page: 1, perPage: 10));
 // Returns PaginatedModelResponse with $response->items, $response->page, etc.
 ```
 
+`handle()` accepts two further optional arguments: `role` (see [Role-Based Filtering](#role-based-filtering)) and `expand` (see [Selective Expansion](#selective-expansion)).
+
 ### Response Types
 
 - `ModelResponse` — wraps a single `stdClass` item. `getCode()` returns `200`.
@@ -190,3 +192,47 @@ class TeamNotFoundException extends \RuntimeException implements ItemNotFoundExc
 ```
 
 Handlers that throw a non-matching exception will bubble through expansion — this is intentional, so unexpected failures are surfaced rather than swallowed.
+
+### Selective Expansion
+
+By default, every eligible reference in the response DTO is expanded. Pass an `expand` list to `QueryBus::handle()` to narrow it down:
+
+```php
+// Expand everything eligible (default).
+$queryBus->handle($userId);
+$queryBus->handle($userId, expand: null);
+
+// Expand nothing, even if eligible handlers are registered.
+$queryBus->handle($userId, expand: []);
+
+// Expand only the listed source-DTO properties.
+$queryBus->handle($userId, expand: ['profileId']);
+```
+
+Names in the list refer to **the original property on the source DTO**, not the derived output key. Given `public ProfileId $profileId`, pass `'profileId'` (not `'profile'`). Given `public TeamId $team`, pass `'team'` (not `'teamExpanded'`).
+
+Mapping an external query parameter such as `?expand=profile` to a source-DTO field is a controller concern. Consumers migrating from JSON:API or Stripe — where `expand`/`include` match the public output key — typically keep a small translation table in the controller so the public URL contract stays stable even if the source DTO gets renamed:
+
+```php
+$outputKeyToSourceField = [
+    'profile' => 'profileId',
+    'team'    => 'teamId',
+];
+
+// Absent/empty `?expand=` → pass null so the bus keeps its documented
+// default of expanding every eligible reference. Sending `[]` instead
+// would silently flip the default to "expand nothing".
+$raw = $request->getQueryParam('expand');
+if ($raw === null || $raw === '') {
+    $expand = null;
+} else {
+    $requested = array_filter(explode(',', $raw));
+    $expand = array_values(array_intersect_key($outputKeyToSourceField, array_flip($requested)));
+}
+
+$response = $queryBus->handle(new UserId($id), expand: $expand);
+```
+
+Authorization still wins: names referring to handlers registered without `allowExpansion: true` are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.
+
+Expansion only runs when the named property holds an object. Naming a property whose value is `null` (e.g. `public ?ProfileId $profileId = null`) is a silent skip — no expanded key will appear on the response for that field. Consumers rendering output should treat the expanded key as optional.
