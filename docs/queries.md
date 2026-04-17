@@ -154,3 +154,39 @@ For example, given `public TeamId $teamId`, the result will contain both `teamId
 Given `public TeamId $team`, the result will contain both `team` (the original `TeamId` object) and `teamExpanded` (the expanded DTO).
 
 The `id` property is excluded from expansion.
+
+### Exception Contract
+
+Handlers registered with `allowExpansion: true` **must** signal a missing record by throwing an exception that implements `StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface`. Expansion catches these and substitutes `null` for the expanded value, so a dangling reference degrades gracefully instead of failing the whole response (which matters especially for paginated endpoints, where one missing row would otherwise take down the page).
+
+Any other exception bubbles out of `QueryBus::handle()` and fails the enclosing request.
+
+`ItemNotFoundException` ships implementing this interface, so existing handlers that already throw it need no change:
+
+```php
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
+
+class GetTeamByIdHandler implements SingleHandlerInterface
+{
+    public function __invoke(object $query): Team
+    {
+        $team = $this->repo->find((string) $query);
+        if ($team === null) {
+            throw new ItemNotFoundException((string) $query);
+        }
+        return $team;
+    }
+}
+```
+
+If you share a handler with an HTTP route and it throws a framework exception on a miss (for example `League\Route\Http\Exception` 404), either have that exception implement `ItemNotFoundExceptionInterface` or wrap the miss in a dedicated exception that does:
+
+```php
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface;
+
+class TeamNotFoundException extends \RuntimeException implements ItemNotFoundExceptionInterface
+{
+}
+```
+
+Handlers that throw a non-matching exception will bubble through expansion — this is intentional, so unexpected failures are surfaced rather than swallowed.

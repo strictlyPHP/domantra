@@ -10,6 +10,7 @@ use StrictlyPHP\Domantra\Domain\PaginatedIdCollection;
 use StrictlyPHP\Domantra\Query\AggregateRootHandler;
 use StrictlyPHP\Domantra\Query\CachedDtoHandler;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface;
 use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
@@ -362,5 +363,82 @@ class QueryBusTest extends TestCase
             'item' => $expandedDto,
         ];
         $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testExpandDtoSetsNullWhenConsumerExceptionImplementsMarkerInterface(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $userDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+        ];
+
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $consumerException = new class('consumer 404') extends \RuntimeException implements ItemNotFoundExceptionInterface {
+        };
+
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willThrowException($consumerException);
+
+        $response = $this->queryBus->handle($userId);
+
+        $expandedDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+            'profile' => null,
+        ];
+        $expected = (object) [
+            'item' => $expandedDto,
+        ];
+        $this->assertEquals($expected, $response->jsonSerialize());
+    }
+
+    public function testExpandDtoBubblesUnrelatedExceptions(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $userDto = (object) [
+            'id' => $userId,
+            'name' => 'Test Name',
+            'profileId' => $profileId,
+        ];
+
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willThrowException(new \RuntimeException('boom'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('boom');
+
+        $this->queryBus->handle($userId);
     }
 }

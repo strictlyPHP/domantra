@@ -6,6 +6,7 @@ namespace StrictlyPHP\Domantra\Query;
 
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
+use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface;
 use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\PaginatedHandlerInterface;
 use StrictlyPHP\Domantra\Query\Handlers\SingleHandlerInterface;
@@ -104,7 +105,7 @@ class QueryBus implements QueryBusInterface
                         } else {
                             throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
                         }
-                    } catch (ItemNotFoundException $e) {
+                    } catch (ItemNotFoundExceptionInterface $e) {
                         $expandedValue = null;
                     }
 
