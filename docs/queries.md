@@ -219,10 +219,20 @@ $outputKeyToSourceField = [
     'team'    => 'teamId',
 ];
 
-$requested = array_filter(explode(',', $request->getQueryParam('expand', '')));
-$expand = array_values(array_intersect_key($outputKeyToSourceField, array_flip($requested)));
+// Absent/empty `?expand=` → pass null so the bus keeps its documented
+// default of expanding every eligible reference. Sending `[]` instead
+// would silently flip the default to "expand nothing".
+$raw = $request->getQueryParam('expand');
+if ($raw === null || $raw === '') {
+    $expand = null;
+} else {
+    $requested = array_filter(explode(',', $raw));
+    $expand = array_values(array_intersect_key($outputKeyToSourceField, array_flip($requested)));
+}
 
 $response = $queryBus->handle(new UserId($id), expand: $expand);
 ```
 
 Authorization still wins: names referring to handlers registered without `allowExpansion: true` are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.
+
+Expansion only runs when the named property holds an object. Naming a property whose value is `null` (e.g. `public ?ProfileId $profileId = null`) is a silent skip — no expanded key will appear on the response for that field. Consumers rendering output should treat the expanded key as optional.

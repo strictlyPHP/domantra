@@ -93,38 +93,46 @@ class QueryBus implements QueryBusInterface
     {
         $expanded = (object) [];
 
+        // Two passes so raw properties always win a name collision with a derived
+        // expanded key, regardless of declaration order. A DTO with both `profileId`
+        // and `profile` would otherwise see `profile` (expansion of `profileId`)
+        // overwritten by the raw `profile` field when iterated after it.
         foreach (get_object_vars($dto) as $property => $value) {
             $expanded->$property = $value;
+        }
 
-            if (is_object($value) && $property !== 'id') {
-                if ($expand !== null && ! in_array($property, $expand, true)) {
-                    continue;
-                }
-
-                $class = get_class($value);
-                if (
-                    isset($this->handlers[$class]) &&
-                    ($this->allowExpansion[$class] ?? false) === true
-                ) {
-                    $handler = $this->handlers[$class];
-                    try {
-                        if ($handler instanceof DtoHandlerHandlerInterface) {
-                            $expandedValue = $this->cachedDtoHandler->handle($value, $handler, $role);
-                        } elseif ($handler instanceof SingleHandlerInterface) {
-                            $expandedValue = $this->aggregateRootHandler->handle($value, $handler, $role);
-                        } else {
-                            throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
-                        }
-                    } catch (ItemNotFoundExceptionInterface $e) {
-                        $expandedValue = null;
-                    }
-
-                    $expandedProperty = $this->getExpandedPropertyName($property);
-                    if (! property_exists($expanded, $expandedProperty)) {
-                        $expanded->$expandedProperty = $expandedValue;
-                    }
-                }
+        foreach (get_object_vars($dto) as $property => $value) {
+            if (! is_object($value) || $property === 'id') {
+                continue;
             }
+            if ($expand !== null && ! in_array($property, $expand, true)) {
+                continue;
+            }
+
+            $class = get_class($value);
+            if (! isset($this->handlers[$class]) || ($this->allowExpansion[$class] ?? false) !== true) {
+                continue;
+            }
+
+            $expandedProperty = $this->getExpandedPropertyName($property);
+            if (property_exists($expanded, $expandedProperty)) {
+                continue;
+            }
+
+            $handler = $this->handlers[$class];
+            try {
+                if ($handler instanceof DtoHandlerHandlerInterface) {
+                    $expandedValue = $this->cachedDtoHandler->handle($value, $handler, $role);
+                } elseif ($handler instanceof SingleHandlerInterface) {
+                    $expandedValue = $this->aggregateRootHandler->handle($value, $handler, $role);
+                } else {
+                    throw new \RuntimeException(sprintf('Handler %s must be an instance of %s or %s', $class, DtoHandlerHandlerInterface::class, SingleHandlerInterface::class));
+                }
+            } catch (ItemNotFoundExceptionInterface $e) {
+                $expandedValue = null;
+            }
+
+            $expanded->$expandedProperty = $expandedValue;
         }
 
         return $expanded;

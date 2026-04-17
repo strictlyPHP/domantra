@@ -762,27 +762,75 @@ class QueryBusTest extends TestCase
     public function testHandleWithExpandListContainingIdIsSilentNoOp(): void
     {
         $userId = new UserId('test-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+        ];
+
+        // Registered with allowExpansion=true so that a regression deleting the
+        // `$property === 'id'` guard in expandDto is not absorbed by the
+        // authorization check; only the id guard prevents a second handle() call.
+        $this->queryBus->registerHandler(UserId::class, $userHandler, true);
+
+        // Exactly one invocation: the top-level handle(). A second invocation
+        // would mean the `id` field was re-resolved through expansion.
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+
+        $response = $this->queryBus->handle($userId, null, ['id']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($userId, $responseItem->id);
+        $this->assertFalse(property_exists($responseItem, 'idExpanded'));
+    }
+
+    public function testExpansionResultSurvivesRawPropertyWithCollidingName(): void
+    {
+        $userId = new UserId('test-id');
         $profileId = new ProfileId('profile-id');
 
         $userHandler = $this->createMock(SingleHandlerInterface::class);
         $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'bio',
+        ];
 
+        // DTO carries both `profileId` (the id reference) and a raw `profile`
+        // field pointing at the same ProfileId. The expansion of `profileId`
+        // derives the key `profile`, which collides with the raw field. Raw
+        // fields must win deterministically — the expansion of `profile`
+        // itself still produces `profileExpanded`.
         $userDto = (object) [
             'id' => $userId,
             'profileId' => $profileId,
+            'profile' => $profileId,
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
 
-        // `id` is always excluded from expansion, so naming it is a silent no-op.
-        $response = $this->queryBus->handle($userId, null, ['id']);
+        // Called exactly once: expansion for `profileId` is short-circuited
+        // because the derived key `profile` already exists as a raw property.
+        // Expansion for the raw `profile` field still runs (→ profileExpanded).
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willReturn($profileDto);
+
+        $response = $this->queryBus->handle($userId);
 
         $responseItem = $response->jsonSerialize()->item;
-        $this->assertSame($userId, $responseItem->id);
-        $this->assertFalse(property_exists($responseItem, 'profile'));
+        $this->assertSame($profileId, $responseItem->profile, 'raw `profile` field must not be overwritten by expansion of `profileId`');
+        $this->assertSame($profileDto, $responseItem->profileExpanded);
     }
 }
