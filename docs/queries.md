@@ -209,6 +209,20 @@ $queryBus->handle($userId, expand: []);
 $queryBus->handle($userId, expand: ['profileId']);
 ```
 
-Names in the list refer to **the original property on the source DTO**, not the derived output key. Given `public ProfileId $profileId`, pass `'profileId'` (not `'profile'`). Given `public TeamId $team`, pass `'team'` (not `'teamExpanded'`). Mapping an external query parameter such as `?expand=profile` to a source-DTO field is a controller concern.
+Names in the list refer to **the original property on the source DTO**, not the derived output key. Given `public ProfileId $profileId`, pass `'profileId'` (not `'profile'`). Given `public TeamId $team`, pass `'team'` (not `'teamExpanded'`).
+
+Mapping an external query parameter such as `?expand=profile` to a source-DTO field is a controller concern. Consumers migrating from JSON:API or Stripe — where `expand`/`include` match the public output key — typically keep a small translation table in the controller so the public URL contract stays stable even if the source DTO gets renamed:
+
+```php
+$outputKeyToSourceField = [
+    'profile' => 'profileId',
+    'team'    => 'teamId',
+];
+
+$requested = array_filter(explode(',', $request->getQueryParam('expand', '')));
+$expand = array_values(array_intersect_key($outputKeyToSourceField, array_flip($requested)));
+
+$response = $queryBus->handle(new UserId($id), expand: $expand);
+```
 
 Authorization still wins: names referring to handlers registered without `allowExpansion: true` are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.

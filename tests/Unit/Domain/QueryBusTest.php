@@ -663,8 +663,15 @@ class QueryBusTest extends TestCase
 
         $items = $response->jsonSerialize()->items;
         $this->assertCount(2, $items);
+
+        // Each item gets its own profile DTO — guards against a regression that
+        // maps the same expansion result to every paginated item.
+        $this->assertSame($profileIdA, $items[0]->profileId);
+        $this->assertSame($profileDtoA, $items[0]->profile);
+        $this->assertSame($profileIdB, $items[1]->profileId);
+        $this->assertSame($profileDtoB, $items[1]->profile);
+
         foreach ($items as $item) {
-            $this->assertTrue(property_exists($item, 'profile'), 'each paginated item should have profile expanded');
             $this->assertFalse(property_exists($item, 'team'), 'team should not be expanded on any paginated item');
         }
     }
@@ -721,6 +728,61 @@ class QueryBusTest extends TestCase
         $response = $this->queryBus->handle($userId, null, ['profile']);
 
         $responseItem = $response->jsonSerialize()->item;
+        $this->assertFalse(property_exists($responseItem, 'profile'));
+        // The source field must survive a filter reject — guards against a regression
+        // that wipes the original property when the expand list doesn't match.
+        $this->assertSame($profileId, $responseItem->profileId);
+    }
+
+    public function testHandleWithExpandListSilentlySkipsNullValuedProperty(): void
+    {
+        $userId = new UserId('test-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => null,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, ['profileId']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertNull($responseItem->profileId);
+        $this->assertFalse(property_exists($responseItem, 'profile'), 'null value must not be expanded even when named in the list');
+    }
+
+    public function testHandleWithExpandListContainingIdIsSilentNoOp(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        // `id` is always excluded from expansion, so naming it is a silent no-op.
+        $response = $this->queryBus->handle($userId, null, ['id']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($userId, $responseItem->id);
         $this->assertFalse(property_exists($responseItem, 'profile'));
     }
 }
