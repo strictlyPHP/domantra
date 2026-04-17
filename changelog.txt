@@ -1,4 +1,6 @@
-Changelog for version 0.0.10
+Changelog for version 0.0.11
 
-- refactor: cache TTL in local variable to avoid double getTtl() call (Ken Lalobo)
-- fix: skip Redis set when TTL is zero or negative (Ken Lalobo)
+- fix: raw DTO properties deterministically win name collisions with expansions (Ken Lalobo)
+- test: tighten selective-expansion tests, cover null/id edge cases (Ken Lalobo)
+- feat: support selective DTO expansion via optional expand list (Ken Lalobo)
+- feat: introduce ItemNotFoundExceptionInterface marker for expansion (Ken Lalobo)
