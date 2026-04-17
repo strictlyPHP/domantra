@@ -111,6 +111,8 @@ $response = $queryBus->handle(new ListUsersQuery(page: 1, perPage: 10));
 // Returns PaginatedModelResponse with $response->items, $response->page, etc.
 ```
 
+`handle()` accepts two further optional arguments: `role` (see [Role-Based Filtering](#role-based-filtering)) and `expand` (see [Selective Expansion](#selective-expansion)).
+
 ### Response Types
 
 - `ModelResponse` — wraps a single `stdClass` item. `getCode()` returns `200`.
@@ -190,3 +192,23 @@ class TeamNotFoundException extends \RuntimeException implements ItemNotFoundExc
 ```
 
 Handlers that throw a non-matching exception will bubble through expansion — this is intentional, so unexpected failures are surfaced rather than swallowed.
+
+### Selective Expansion
+
+By default, every eligible reference in the response DTO is expanded. Pass an `expand` list to `QueryBus::handle()` to narrow it down:
+
+```php
+// Expand everything eligible (default).
+$queryBus->handle($userId);
+$queryBus->handle($userId, expand: null);
+
+// Expand nothing, even if eligible handlers are registered.
+$queryBus->handle($userId, expand: []);
+
+// Expand only the listed source-DTO properties.
+$queryBus->handle($userId, expand: ['profileId']);
+```
+
+Names in the list refer to **the original property on the source DTO**, not the derived output key. Given `public ProfileId $profileId`, pass `'profileId'` (not `'profile'`). Given `public TeamId $team`, pass `'team'` (not `'teamExpanded'`). Mapping an external query parameter such as `?expand=profile` to a source-DTO field is a controller concern.
+
+Authorization still wins: names referring to handlers registered without `allowExpansion: true` are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.

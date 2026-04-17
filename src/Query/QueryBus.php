@@ -42,9 +42,11 @@ class QueryBus implements QueryBusInterface
     }
 
     /**
+     * @param list<string>|null $expand See {@see QueryBusInterface::handle()} for semantics.
+     *
      * @throws ItemNotFoundException
      */
-    public function handle(object $query, ?string $role = null): ResponseInterface
+    public function handle(object $query, ?string $role = null, ?array $expand = null): ResponseInterface
     {
         $class = get_class($query);
         if (! isset($this->handlers[$class])) {
@@ -54,7 +56,7 @@ class QueryBus implements QueryBusInterface
 
         if ($handler instanceof SingleHandlerInterface) {
             if ($query instanceof \Stringable) {
-                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler, $role), $role));
+                return new ModelResponse($this->expandDto($this->aggregateRootHandler->handle($query, $handler, $role), $role, $expand));
             } else {
                 throw new \RuntimeException(sprintf('Query must implement %s when the return type is %s', \Stringable::class, AbstractAggregateRoot::class));
             }
@@ -67,7 +69,8 @@ class QueryBus implements QueryBusInterface
                 $idHandler = $this->handlers[$idClass];
                 $items[] = $this->expandDto(
                     $this->aggregateRootHandler->handle($id, $idHandler, $role),
-                    $role
+                    $role,
+                    $expand
                 );
             }
 
@@ -83,7 +86,10 @@ class QueryBus implements QueryBusInterface
         }
     }
 
-    protected function expandDto(object $dto, ?string $role): object
+    /**
+     * @param list<string>|null $expand See {@see QueryBusInterface::handle()} for semantics.
+     */
+    protected function expandDto(object $dto, ?string $role, ?array $expand = null): object
     {
         $expanded = (object) [];
 
@@ -91,6 +97,10 @@ class QueryBus implements QueryBusInterface
             $expanded->$property = $value;
 
             if (is_object($value) && $property !== 'id') {
+                if ($expand !== null && ! in_array($property, $expand, true)) {
+                    continue;
+                }
+
                 $class = get_class($value);
                 if (
                     isset($this->handlers[$class]) &&
