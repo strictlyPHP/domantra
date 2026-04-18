@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Domain\PaginatedIdCollection;
 use StrictlyPHP\Domantra\Query\AggregateRootHandler;
 use StrictlyPHP\Domantra\Query\CachedDtoHandler;
+use StrictlyPHP\Domantra\Query\ExpansionPolicy;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundException;
 use StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface;
 use StrictlyPHP\Domantra\Query\Handlers\DtoHandlerHandlerInterface;
@@ -90,12 +91,13 @@ class QueryBusTest extends TestCase
         $handlers['stdClass'] = $invalidHandler;
         $handlersProperty->setValue($queryBus, $handlers);
 
-        // Also set the allowExpansion flag for stdClass
-        $allowExpansionProperty = $reflection->getProperty('allowExpansion');
-        $allowExpansionProperty->setAccessible(true);
-        $allowExpansion = $allowExpansionProperty->getValue($queryBus);
-        $allowExpansion['stdClass'] = true;
-        $allowExpansionProperty->setValue($queryBus, $allowExpansion);
+        // Also set the expansion policy to ByDefault for stdClass so the
+        // expansion branch is exercised (reaching the invalid-handler error).
+        $expansionPolicyProperty = $reflection->getProperty('expansionPolicy');
+        $expansionPolicyProperty->setAccessible(true);
+        $expansionPolicy = $expansionPolicyProperty->getValue($queryBus);
+        $expansionPolicy['stdClass'] = ExpansionPolicy::ByDefault;
+        $expansionPolicyProperty->setValue($queryBus, $expansionPolicy);
 
         // Create a test DTO with a property that will use the invalid handler
         $dto = (object) [
@@ -151,7 +153,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -240,7 +242,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $handler1);
-        $this->queryBus->registerHandler(ProfileId::class, $handler2, true);
+        $this->queryBus->registerHandler(ProfileId::class, $handler2, ExpansionPolicy::ByDefault);
 
         $expectedCalls = [
             [
@@ -296,7 +298,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -340,7 +342,7 @@ class QueryBusTest extends TestCase
         $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -381,7 +383,7 @@ class QueryBusTest extends TestCase
         $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -425,7 +427,7 @@ class QueryBusTest extends TestCase
         $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
@@ -468,8 +470,8 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
-        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->exactly(2))->method('handle')->willReturnCallback(
@@ -490,6 +492,76 @@ class QueryBusTest extends TestCase
         $this->assertEquals($expected, $response->jsonSerialize());
     }
 
+    public function testHandleWithNullExpandListSkipsHandlerRegisteredWithOnRequestPolicy(): void
+    {
+        $userId = new UserId('test-id');
+        $profileId = new ProfileId('profile-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $profileHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'profileId' => $profileId,
+            'teamId' => $teamId,
+        ];
+        $profileDto = (object) [
+            'id' => $profileId,
+            'bio' => 'bio',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($profileId, $profileHandler)
+            ->willReturn($profileDto);
+
+        $response = $this->queryBus->handle($userId, null, null);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($profileDto, $responseItem->profile);
+        $this->assertSame($teamId, $responseItem->teamId);
+        $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not auto-expand on null expand list');
+    }
+
+    public function testHandleWithExplicitExpandListExpandsHandlerRegisteredWithOnRequestPolicy(): void
+    {
+        $userId = new UserId('test-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'teamId' => $teamId,
+        ];
+        $teamDto = (object) [
+            'id' => $teamId,
+            'name' => 'team',
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($teamId, $teamHandler)
+            ->willReturn($teamDto);
+
+        $response = $this->queryBus->handle($userId, null, ['teamId']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($teamDto, $responseItem->team);
+    }
+
     public function testHandleWithEmptyExpandListExpandsNothing(): void
     {
         $userId = new UserId('test-id');
@@ -504,7 +576,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->never())->method('handle');
@@ -541,8 +613,8 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
-        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->once())
@@ -572,7 +644,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->never())->method('handle');
@@ -584,7 +656,7 @@ class QueryBusTest extends TestCase
         $this->assertSame($profileId, $responseItem->profileId);
     }
 
-    public function testHandleWithExpandListStillHonoursAllowExpansionFalse(): void
+    public function testHandleWithExpandListStillHonoursExpansionPolicyDisabled(): void
     {
         $userId = new UserId('test-id');
         $profileId = new ProfileId('profile-id');
@@ -598,7 +670,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, false);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::Disabled);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->never())->method('handle');
@@ -606,7 +678,7 @@ class QueryBusTest extends TestCase
         $response = $this->queryBus->handle($userId, null, ['profileId']);
 
         $responseItem = $response->jsonSerialize()->item;
-        $this->assertFalse(property_exists($responseItem, 'profile'), 'allowExpansion=false must not be overridden by expand list');
+        $this->assertFalse(property_exists($responseItem, 'profile'), 'ExpansionPolicy::Disabled must not be overridden by expand list');
     }
 
     public function testHandleWithExpandListAppliesToEveryItemInPaginatedResponse(): void
@@ -643,8 +715,8 @@ class QueryBusTest extends TestCase
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(UserQuery::class, $paginatedHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
-        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
         $paginatedHandler->expects($this->once())
             ->method('__invoke')
@@ -694,7 +766,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(TeamId::class, $teamHandler, true);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->once())->method('handle')->with($teamId, $teamHandler)->willReturn($teamDto);
@@ -719,7 +791,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->never())->method('handle');
@@ -747,7 +819,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->never())->method('handle');
@@ -769,10 +841,10 @@ class QueryBusTest extends TestCase
             'id' => $userId,
         ];
 
-        // Registered with allowExpansion=true so that a regression deleting the
-        // `$property === 'id'` guard in expandDto is not absorbed by the
+        // Registered with ExpansionPolicy::ByDefault so that a regression deleting
+        // the `$property === 'id'` guard in expandDto is not absorbed by the
         // authorization check; only the id guard prevents a second handle() call.
-        $this->queryBus->registerHandler(UserId::class, $userHandler, true);
+        $this->queryBus->registerHandler(UserId::class, $userHandler, ExpansionPolicy::ByDefault);
 
         // Exactly one invocation: the top-level handle(). A second invocation
         // would mean the `id` field was re-resolved through expansion.
@@ -812,7 +884,7 @@ class QueryBusTest extends TestCase
         ];
 
         $this->queryBus->registerHandler(UserId::class, $userHandler);
-        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, true);
+        $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
         $this->aggregateRootHandler->expects($this->once())
             ->method('handle')
