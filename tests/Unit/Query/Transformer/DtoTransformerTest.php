@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Tests\Domantra\Unit\Query\Transformer;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Domantra\Query\Attributes\RequiresAuthenticatedUser;
 use StrictlyPHP\Domantra\Query\Transformer\DtoTransformer;
@@ -51,9 +52,7 @@ class DtoTransformerTest extends TestCase
         ], $result);
     }
 
-    /**
-     * @dataProvider userProvider
-     */
+    #[DataProvider('userProvider')]
     public function testItShowsPropertiesWithAuthenticatedUserAttribute(string $role): void
     {
         $result = $this->transformer->transform(
@@ -89,9 +88,7 @@ class DtoTransformerTest extends TestCase
         ], $result);
     }
 
-    /**
-     * @dataProvider userProvider
-     */
+    #[DataProvider('userProvider')]
     public function testItShowsPropertiesWithAuthenticatedUserRolesAttribute(string $role): void
     {
         $result = $this->transformer->transform(
@@ -119,7 +116,7 @@ class DtoTransformerTest extends TestCase
     /**
      * @return array<int, array<string>>
      */
-    public function userProvider(): array
+    public static function userProvider(): array
     {
         return [
             ['USER'],
