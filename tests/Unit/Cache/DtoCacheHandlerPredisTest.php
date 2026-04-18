@@ -6,22 +6,19 @@ namespace StrictlyPHP\Tests\Domantra\Unit\Cache;
 
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Predis\Client;
 use StrictlyPHP\Domantra\Cache\DtoCacheHandlerPredis;
 use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
+use StrictlyPHP\Tests\Domantra\Fixtures\Cache\PredisClientStub;
 
 class DtoCacheHandlerPredisTest extends TestCase
 {
-    private Client & MockObject $client;
+    private PredisClientStub & MockObject $client;
 
     private DtoCacheHandlerPredis $handler;
 
     protected function setUp(): void
     {
-        $this->client = $this->getMockBuilder(Client::class)
-            ->disableOriginalConstructor()
-            ->addMethods(['set'])
-            ->getMock();
+        $this->client = $this->createMock(PredisClientStub::class);
         $this->handler = new DtoCacheHandlerPredis($this->client);
     }
 

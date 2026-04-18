@@ -1,5 +1,5 @@
 /vendor/
 .idea
 diff.txt
-.phpunit.result.cache
+.phpunit.cache/
 composer.lock
