@@ -1,6 +1,6 @@
-Changelog for version 0.0.11
+Changelog for version 0.0.12
 
-- fix: raw DTO properties deterministically win name collisions with expansions (Ken Lalobo)
-- test: tighten selective-expansion tests, cover null/id edge cases (Ken Lalobo)
-- feat: support selective DTO expansion via optional expand list (Ken Lalobo)
-- feat: introduce ItemNotFoundExceptionInterface marker for expansion (Ken Lalobo)
+- test: pin OnRequest policy under empty and non-matching expand lists (Ken Lalobo)
+- style: reorder use imports so ExpansionPolicy follows Exception\* (Ken Lalobo)
+- ci: ignore phpunit 9.x audit advisories in composer.json (Ken Lalobo)
+- feat!: replace allowExpansion bool with ExpansionPolicy enum (Ken Lalobo)
