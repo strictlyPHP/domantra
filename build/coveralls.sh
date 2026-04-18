@@ -4,7 +4,7 @@ DIRNAME=$(/usr/bin/dirname $0)
 DIR=$(/bin/bash -c "cd $DIRNAME/..; /bin/pwd")
 
 cd /tmp/
-[ -f /tmp/phpcov-8.2.0.phar ] ||  curl https://phar.phpunit.de/phpcov-8.2.0.phar --output /tmp/phpcov-8.2.0.phar
+[ -f /tmp/phpcov-10.0.0.phar ] ||  curl https://phar.phpunit.de/phpcov-10.0.0.phar --output /tmp/phpcov-10.0.0.phar
 
 cd $DIR
 
