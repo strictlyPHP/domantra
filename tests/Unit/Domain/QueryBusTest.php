@@ -562,6 +562,58 @@ class QueryBusTest extends TestCase
         $this->assertSame($teamDto, $responseItem->team);
     }
 
+    public function testHandleWithEmptyExpandListDoesNotExpandHandlerRegisteredWithOnRequestPolicy(): void
+    {
+        $userId = new UserId('test-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'teamId' => $teamId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, []);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($teamId, $responseItem->teamId);
+        $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not expand when expand list is empty');
+    }
+
+    public function testHandleWithNonMatchingExpandListDoesNotExpandHandlerRegisteredWithOnRequestPolicy(): void
+    {
+        $userId = new UserId('test-id');
+        $teamId = new TeamId('team-id');
+
+        $userHandler = $this->createMock(SingleHandlerInterface::class);
+        $teamHandler = $this->createMock(DtoHandlerHandlerInterface::class);
+
+        $userDto = (object) [
+            'id' => $userId,
+            'teamId' => $teamId,
+        ];
+
+        $this->queryBus->registerHandler(UserId::class, $userHandler);
+        $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
+
+        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())->method('handle');
+
+        $response = $this->queryBus->handle($userId, null, ['somethingElse']);
+
+        $responseItem = $response->jsonSerialize()->item;
+        $this->assertSame($teamId, $responseItem->teamId);
+        $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not expand when source property is not named in expand list');
+    }
+
     public function testHandleWithEmptyExpandListExpandsNothing(): void
     {
         $userId = new UserId('test-id');
