@@ -22,9 +22,9 @@ class QueryBus implements QueryBusInterface
     private array $handlers = [];
 
     /**
-     * @var array<class-string, bool>
+     * @var array<class-string, ExpansionPolicy>
      */
-    private array $allowExpansion = [];
+    private array $expansionPolicy = [];
 
     public function __construct(
         private AggregateRootHandler $aggregateRootHandler,
@@ -35,10 +35,10 @@ class QueryBus implements QueryBusInterface
     /**
      * @param class-string $queryClass
      */
-    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface|DtoHandlerHandlerInterface $handler, bool $allowExpansion = false): void
+    public function registerHandler(string $queryClass, SingleHandlerInterface|PaginatedHandlerInterface|DtoHandlerHandlerInterface $handler, ExpansionPolicy $expansionPolicy = ExpansionPolicy::Disabled): void
     {
         $this->handlers[$queryClass] = $handler;
-        $this->allowExpansion[$queryClass] = $allowExpansion;
+        $this->expansionPolicy[$queryClass] = $expansionPolicy;
     }
 
     /**
@@ -105,12 +105,21 @@ class QueryBus implements QueryBusInterface
             if (! is_object($value) || $property === 'id') {
                 continue;
             }
-            if ($expand !== null && ! in_array($property, $expand, true)) {
+            $class = get_class($value);
+            if (! isset($this->handlers[$class])) {
                 continue;
             }
 
-            $class = get_class($value);
-            if (! isset($this->handlers[$class]) || ($this->allowExpansion[$class] ?? false) !== true) {
+            $policy = $this->expansionPolicy[$class] ?? ExpansionPolicy::Disabled;
+            if ($policy === ExpansionPolicy::Disabled) {
+                continue;
+            }
+
+            if ($expand === null) {
+                if ($policy !== ExpansionPolicy::ByDefault) {
+                    continue;
+                }
+            } elseif (! in_array($property, $expand, true)) {
                 continue;
             }
 

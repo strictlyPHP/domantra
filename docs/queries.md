@@ -97,7 +97,7 @@ $queryBus->registerHandler(ListUsersQuery::class, new ListUsersHandler());
 $queryBus->registerHandler(
     TeamId::class,
     new GetTeamDtoHandler(),
-    allowExpansion: true
+    ExpansionPolicy::ByDefault
 );
 ```
 
@@ -132,11 +132,22 @@ See [Role-Based Access](role-based-access.md).
 
 When a DTO property contains an object (e.g., a `TeamId`), the query bus can automatically resolve it to its full DTO representation.
 
-To enable expansion for a handler, set `allowExpansion: true` when registering:
+To enable expansion for a handler, pass an `ExpansionPolicy` when registering:
 
 ```php
-$queryBus->registerHandler(TeamId::class, new GetTeamByIdHandler(), allowExpansion: true);
+use StrictlyPHP\Domantra\Query\ExpansionPolicy;
+
+// Expand automatically whenever the TeamId appears in a response DTO
+// and the caller has not explicitly narrowed the expand list.
+$queryBus->registerHandler(TeamId::class, new GetTeamByIdHandler(), ExpansionPolicy::ByDefault);
+
+// Register for expansion but require each call site to opt in by naming
+// the source-DTO property in the `$expand` list. Useful when the same
+// value object appears in DTOs where expansion is not wanted.
+$queryBus->registerHandler(TeamId::class, new GetTeamByIdHandler(), ExpansionPolicy::OnRequest);
 ```
+
+`ExpansionPolicy::Disabled` (the default when the argument is omitted) means the handler is only reachable via a direct `$queryBus->handle()` call and is never used for expansion.
 
 When a `UserDto` has a `public TeamId $team` property, the query bus will:
 1. Detect the `TeamId` object
@@ -159,7 +170,7 @@ The `id` property is excluded from expansion.
 
 ### Exception Contract
 
-Handlers registered with `allowExpansion: true` **must** signal a missing record by throwing an exception that implements `StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface`. Expansion catches these and substitutes `null` for the expanded value, so a dangling reference degrades gracefully instead of failing the whole response (which matters especially for paginated endpoints, where one missing row would otherwise take down the page).
+Handlers registered with an `ExpansionPolicy` other than `Disabled` **must** signal a missing record by throwing an exception that implements `StrictlyPHP\Domantra\Query\Exception\ItemNotFoundExceptionInterface`. Expansion catches these and substitutes `null` for the expanded value, so a dangling reference degrades gracefully instead of failing the whole response (which matters especially for paginated endpoints, where one missing row would otherwise take down the page).
 
 Any other exception bubbles out of `QueryBus::handle()` and fails the enclosing request.
 
@@ -195,17 +206,19 @@ Handlers that throw a non-matching exception will bubble through expansion — t
 
 ### Selective Expansion
 
-By default, every eligible reference in the response DTO is expanded. Pass an `expand` list to `QueryBus::handle()` to narrow it down:
+By default, every reference whose handler was registered with `ExpansionPolicy::ByDefault` is expanded. Handlers registered with `ExpansionPolicy::OnRequest` are only expanded when the call site names them in the `expand` list. Pass an `expand` list to `QueryBus::handle()` to narrow the selection or to opt-in handlers registered with `OnRequest`:
 
 ```php
-// Expand everything eligible (default).
+// Expand every handler registered with ExpansionPolicy::ByDefault (default).
 $queryBus->handle($userId);
 $queryBus->handle($userId, expand: null);
 
 // Expand nothing, even if eligible handlers are registered.
 $queryBus->handle($userId, expand: []);
 
-// Expand only the listed source-DTO properties.
+// Expand only the listed source-DTO properties. Handlers registered with
+// ExpansionPolicy::OnRequest will expand here as long as their property
+// is named in the list.
 $queryBus->handle($userId, expand: ['profileId']);
 ```
 
@@ -233,6 +246,6 @@ if ($raw === null || $raw === '') {
 $response = $queryBus->handle(new UserId($id), expand: $expand);
 ```
 
-Authorization still wins: names referring to handlers registered without `allowExpansion: true` are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.
+Authorization still wins: names referring to handlers registered with `ExpansionPolicy::Disabled` (or never registered at all) are silently skipped. Names that do not match any property on the DTO are also silently ignored. Paginated responses apply the same `expand` list to every item in the collection.
 
 Expansion only runs when the named property holds an object. Naming a property whose value is `null` (e.g. `public ?ProfileId $profileId = null`) is a silent skip — no expanded key will appear on the response for that field. Consumers rendering output should treat the expanded key as optional.
