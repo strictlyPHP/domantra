@@ -18,7 +18,6 @@ return static function (ECSConfig $ecsConfig): void {
         SetList::SPACES,
         SetList::ARRAY,
         SetList::DOCBLOCK,
-        SetList::STRICT,
         SetList::PSR_12
     ]);
 };
