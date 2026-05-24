@@ -1,6 +1,4 @@
-Changelog for version 0.0.12
+Changelog for version 0.0.13
 
-- test: pin OnRequest policy under empty and non-matching expand lists (Ken Lalobo)
-- style: reorder use imports so ExpansionPolicy follows Exception\* (Ken Lalobo)
-- ci: ignore phpunit 9.x audit advisories in composer.json (Ken Lalobo)
-- feat!: replace allowExpansion bool with ExpansionPolicy enum (Ken Lalobo)
+- chore: drop deprecated SetList::STRICT from ecs config (Ken Lalobo)
+- fix: explicit nullable types on CommandBus::create() params (Ken Lalobo)
