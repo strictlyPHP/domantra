@@ -26,9 +26,9 @@ class CommandBus implements CommandBusInterface
     }
 
     public static function create(
-        LoggerInterface $logger = null,
-        EventBusInterface $eventBus = null,
-        DtoCacheHandlerInterface $cacheHandler = null,
+        ?LoggerInterface $logger = null,
+        ?EventBusInterface $eventBus = null,
+        ?DtoCacheHandlerInterface $cacheHandler = null,
     ): self {
         return new self(
             $logger ?? new NullLogger(),
