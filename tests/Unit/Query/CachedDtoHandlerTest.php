@@ -14,7 +14,7 @@ use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 
 class CachedDtoHandlerTest extends TestCase
 {
-    private DtoCacheHandlerInterface & MockObject $cacheHandler;
+    private DtoCacheHandlerInterface&MockObject $cacheHandler;
 
     protected CachedDtoHandler $handler;
 
@@ -27,7 +27,8 @@ class CachedDtoHandlerTest extends TestCase
     public function testHandleReturnsCachedDto(): void
     {
         $query = $this->createMock(\Stringable::class);
-        $query->method('__toString')->willReturn('test-id');
+        $query->method('__toString')
+            ->willReturn('test-id');
 
         $dto = new UserDto(
             new UserId('test-id'),
@@ -66,7 +67,8 @@ class CachedDtoHandlerTest extends TestCase
     public function testHandleLoadsAndCachesWhenNotInCache(): void
     {
         $query = $this->createMock(\Stringable::class);
-        $query->method('__toString')->willReturn('test-id');
+        $query->method('__toString')
+            ->willReturn('test-id');
 
         $dto = new UserDto(
             new UserId('test-id'),
