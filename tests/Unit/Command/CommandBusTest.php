@@ -19,11 +19,11 @@ use StrictlyPHP\Domantra\Domain\EventLogItem;
 
 class CommandBusTest extends TestCase
 {
-    protected MockObject & LoggerInterface $logger;
+    protected MockObject&LoggerInterface $logger;
 
-    protected MockObject & EventBusInterface $eventBus;
+    protected MockObject&EventBusInterface $eventBus;
 
-    protected MockObject & DtoCacheHandlerInterface $cacheHandler;
+    protected MockObject&DtoCacheHandlerInterface $cacheHandler;
 
     protected CommandBus $commandBus;
 

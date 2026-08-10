@@ -12,7 +12,7 @@ use StrictlyPHP\Domantra\Domain\CachedDtoInterface;
 
 class DtoCacheHandlerPredisTest extends TestCase
 {
-    private Client & MockObject $client;
+    private Client&MockObject $client;
 
     private DtoCacheHandlerPredis $handler;
 
@@ -28,9 +28,11 @@ class DtoCacheHandlerPredisTest extends TestCase
     public function testSetDoesNotCallClientWhenTtlIsZero(): void
     {
         $dto = $this->createMock(CachedDtoInterface::class);
-        $dto->method('getTtl')->willReturn(0);
+        $dto->method('getTtl')
+            ->willReturn(0);
 
-        $this->client->expects($this->never())->method('set');
+        $this->client->expects($this->never())
+            ->method('set');
 
         $this->handler->set($dto);
     }
@@ -38,9 +40,11 @@ class DtoCacheHandlerPredisTest extends TestCase
     public function testSetDoesNotCallClientWhenTtlIsNegative(): void
     {
         $dto = $this->createMock(CachedDtoInterface::class);
-        $dto->method('getTtl')->willReturn(-1);
+        $dto->method('getTtl')
+            ->willReturn(-1);
 
-        $this->client->expects($this->never())->method('set');
+        $this->client->expects($this->never())
+            ->method('set');
 
         $this->handler->set($dto);
     }
@@ -48,8 +52,10 @@ class DtoCacheHandlerPredisTest extends TestCase
     public function testSetCallsClientWhenTtlIsPositive(): void
     {
         $dto = $this->createMock(CachedDtoInterface::class);
-        $dto->method('getTtl')->willReturn(60);
-        $dto->method('getCacheKey')->willReturn('some-key');
+        $dto->method('getTtl')
+            ->willReturn(60);
+        $dto->method('getCacheKey')
+            ->willReturn('some-key');
 
         $this->client->expects($this->once())
             ->method('set')

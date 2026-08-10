@@ -24,5 +24,26 @@ class EventLogItemTest extends TestCase
         $this->assertSame($event, $eventLogItem->event);
         $this->assertSame($happenedAt, $eventLogItem->happenedAt);
         $this->assertSame($dto, $eventLogItem->dto);
+        $this->assertNull($eventLogItem->previousDto);
+    }
+
+    public function testEventLogItemCreationWithPreviousDto(): void
+    {
+        $event = $this->createMock(\StrictlyPHP\Domantra\Command\EventInterface::class);
+        $happenedAt = new \DateTimeImmutable('2023-10-01 12:00:00');
+        $dto = new \stdClass();
+        $previousDto = new \stdClass();
+        $eventLogItem = new EventLogItem(
+            name: 'fooBar',
+            event: $event,
+            happenedAt: $happenedAt,
+            dto: $dto,
+            previousDto: $previousDto
+        );
+
+        $this->assertSame($event, $eventLogItem->event);
+        $this->assertSame($happenedAt, $eventLogItem->happenedAt);
+        $this->assertSame($dto, $eventLogItem->dto);
+        $this->assertSame($previousDto, $eventLogItem->previousDto);
     }
 }

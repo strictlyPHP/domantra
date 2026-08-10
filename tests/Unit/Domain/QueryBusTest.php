@@ -23,9 +23,9 @@ use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserQuery;
 
 class QueryBusTest extends TestCase
 {
-    protected AggregateRootHandler & MockObject $aggregateRootHandler;
+    protected AggregateRootHandler&MockObject $aggregateRootHandler;
 
-    protected CachedDtoHandler & MockObject $cachedDtoHandler;
+    protected CachedDtoHandler&MockObject $cachedDtoHandler;
 
     protected QueryBus $queryBus;
 
@@ -473,10 +473,15 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->exactly(2))->method('handle')->willReturnCallback(
-            fn ($id) => $id === $profileId ? $profileDto : $teamDto
-        );
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->exactly(2))
+            ->method('handle')
+            ->willReturnCallback(
+                fn ($id) => $id === $profileId ? $profileDto : $teamDto
+            );
 
         $response = $this->queryBus->handle($userId, null, null);
 
@@ -516,7 +521,10 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->once())
             ->method('handle')
             ->with($profileId, $profileHandler)
@@ -524,7 +532,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($userId, null, null);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($profileDto, $responseItem->profile);
         $this->assertSame($teamId, $responseItem->teamId);
         $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not auto-expand on null expand list');
@@ -550,7 +559,10 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->once())
             ->method('handle')
             ->with($teamId, $teamHandler)
@@ -558,7 +570,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($userId, null, ['teamId']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($teamDto, $responseItem->team);
     }
 
@@ -578,12 +591,17 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, []);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($teamId, $responseItem->teamId);
         $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not expand when expand list is empty');
     }
@@ -604,12 +622,17 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::OnRequest);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, ['somethingElse']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($teamId, $responseItem->teamId);
         $this->assertFalse(property_exists($responseItem, 'team'), 'ExpansionPolicy::OnRequest must not expand when source property is not named in expand list');
     }
@@ -630,8 +653,12 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, []);
 
@@ -668,7 +695,10 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
         $this->cachedDtoHandler->expects($this->once())
             ->method('handle')
             ->with($profileId, $profileHandler)
@@ -676,7 +706,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($userId, null, ['profileId']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($profileDto, $responseItem->profile);
         $this->assertSame($teamId, $responseItem->teamId);
         $this->assertFalse(property_exists($responseItem, 'team'), 'team should not be expanded when not in the expand list');
@@ -698,12 +729,17 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, ['doesNotExist']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertFalse(property_exists($responseItem, 'profile'));
         $this->assertSame($profileId, $responseItem->profileId);
     }
@@ -724,12 +760,17 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::Disabled);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, ['profileId']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertFalse(property_exists($responseItem, 'profile'), 'ExpansionPolicy::Disabled must not be overridden by expand list');
     }
 
@@ -785,7 +826,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($query, null, ['profileId']);
 
-        $items = $response->jsonSerialize()->items;
+        $items = $response->jsonSerialize()
+            ->items;
         $this->assertCount(2, $items);
 
         // Each item gets its own profile DTO — guards against a regression that
@@ -820,12 +862,19 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(TeamId::class, $teamHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->once())->method('handle')->with($teamId, $teamHandler)->willReturn($teamDto);
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->once())
+            ->method('handle')
+            ->with($teamId, $teamHandler)
+            ->willReturn($teamDto);
 
         $response = $this->queryBus->handle($userId, null, ['team']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($teamDto, $responseItem->teamExpanded);
     }
 
@@ -845,13 +894,18 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         // Passing the *expanded* output key ("profile") must not expand the source field ("profileId").
         $response = $this->queryBus->handle($userId, null, ['profile']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertFalse(property_exists($responseItem, 'profile'));
         // The source field must survive a filter reject — guards against a regression
         // that wipes the original property when the expand list doesn't match.
@@ -873,12 +927,17 @@ class QueryBusTest extends TestCase
         $this->queryBus->registerHandler(UserId::class, $userHandler);
         $this->queryBus->registerHandler(ProfileId::class, $profileHandler, ExpansionPolicy::ByDefault);
 
-        $this->aggregateRootHandler->expects($this->once())->method('handle')->with($userId, $userHandler)->willReturn($userDto);
-        $this->cachedDtoHandler->expects($this->never())->method('handle');
+        $this->aggregateRootHandler->expects($this->once())
+            ->method('handle')
+            ->with($userId, $userHandler)
+            ->willReturn($userDto);
+        $this->cachedDtoHandler->expects($this->never())
+            ->method('handle');
 
         $response = $this->queryBus->handle($userId, null, ['profileId']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertNull($responseItem->profileId);
         $this->assertFalse(property_exists($responseItem, 'profile'), 'null value must not be expanded even when named in the list');
     }
@@ -907,7 +966,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($userId, null, ['id']);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($userId, $responseItem->id);
         $this->assertFalse(property_exists($responseItem, 'idExpanded'));
     }
@@ -953,7 +1013,8 @@ class QueryBusTest extends TestCase
 
         $response = $this->queryBus->handle($userId);
 
-        $responseItem = $response->jsonSerialize()->item;
+        $responseItem = $response->jsonSerialize()
+            ->item;
         $this->assertSame($profileId, $responseItem->profile, 'raw `profile` field must not be overwritten by expansion of `profileId`');
         $this->assertSame($profileDto, $responseItem->profileExpanded);
     }

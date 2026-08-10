@@ -18,7 +18,7 @@ use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserModel;
 
 class AggregateRootHandlerTest extends TestCase
 {
-    private DtoCacheHandlerInterface & MockObject $cacheHandler;
+    private DtoCacheHandlerInterface&MockObject $cacheHandler;
 
     protected AggregateRootHandler $handler;
 
