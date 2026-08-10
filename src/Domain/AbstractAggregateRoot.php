@@ -40,6 +40,8 @@ abstract class AbstractAggregateRoot
             throw new \RuntimeException(sprintf('Missing apply method %s in %s', $method, static::class));
         }
 
+        $previousDto = $this->snapshotDto();
+
         $this->$method($event);
 
         $useTimestampsAttributes = (new \ReflectionClass($this))->getAttributes(UseTimestamps::class);
@@ -62,8 +64,33 @@ abstract class AbstractAggregateRoot
             name: implode('.', array_map(fn (string $item) => lcfirst($item), $classArray)),
             event: $event,
             happenedAt: $happenedAt,
-            dto : json_decode(json_encode($this->getDto()))
+            dto : json_decode(json_encode($this->getDto())),
+            previousDto: $previousDto
         );
+    }
+
+    /**
+     * Snapshot of the DTO as it was before the event is applied, or null when
+     * the aggregate has no previous state (i.e. this is its first event).
+     */
+    private function snapshotDto(): ?\stdClass
+    {
+        try {
+            return json_decode(json_encode($this->getDto()));
+        } catch (\Error $e) {
+            // getDto() legitimately fails before the first event, while the
+            // aggregate's own properties are still uninitialized. If they are
+            // all initialized, the Error is a genuine bug in getDto().
+            foreach ((new \ReflectionObject($this))->getProperties() as $property) {
+                if ($property->isStatic() || $property->getDeclaringClass()->getName() === self::class) {
+                    continue;
+                }
+                if (! $property->isInitialized($this)) {
+                    return null;
+                }
+            }
+            throw $e;
+        }
     }
 
     public function getCreatedAt(): \DateTimeImmutable

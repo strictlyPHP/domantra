@@ -13,6 +13,7 @@ readonly class EventLogItem
         public EventInterface $event,
         public \DateTimeImmutable $happenedAt,
         public \stdClass $dto,
+        public ?\stdClass $previousDto = null,
     ) {
     }
 }
