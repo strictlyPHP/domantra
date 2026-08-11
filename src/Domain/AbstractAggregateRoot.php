@@ -45,8 +45,8 @@ abstract class AbstractAggregateRoot
         $this->$method($event);
 
         $useTimestampsAttributes = (new \ReflectionClass($this))->getAttributes(UseTimestamps::class);
-        $useTimestamps = (bool) $useTimestampsAttributes;
-        $softDelete = $useTimestampsAttributes[0]->newInstance()->softDelete ?? false;
+        $useTimestamps = $useTimestampsAttributes !== [];
+        $softDelete = $useTimestamps && $useTimestampsAttributes[0]->newInstance()->softDelete;
 
         if ($useTimestamps) {
             if (! isset($this->createdAt)) {

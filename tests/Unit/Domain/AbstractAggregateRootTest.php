@@ -6,6 +6,7 @@ namespace StrictlyPHP\Tests\Domantra\Unit\Domain;
 
 use PHPUnit\Framework\TestCase;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\BrokenDtoModel;
+use StrictlyPHP\Tests\Domantra\Fixtures\Domain\TimestamplessModel;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserId;
 use StrictlyPHP\Tests\Domantra\Fixtures\Domain\UserModel;
 
@@ -134,5 +135,24 @@ class AbstractAggregateRootTest extends TestCase
         $this->expectExceptionMessage('getDto is broken');
 
         $model->updateUsername('updateduser', new \DateTimeImmutable('2025-08-02 19:59:49.467350'));
+    }
+
+    public function testRecordAndApplyThatWorksWithoutUseTimestampsAttribute(): void
+    {
+        $now = new \DateTimeImmutable('2025-08-02 18:59:49.467350');
+        $model = TimestamplessModel::create(
+            id: new UserId('78b52d55-0d03-4c6c-a3e6-4bda7d908d32'),
+            username: 'testuser',
+            email: 'test@example.com',
+            createdAt: $now
+        );
+        $model->updateUsername('updateduser', $now->modify('+1 hour'));
+
+        $items = $model->_getEventLogItems();
+        $this->assertCount(2, $items);
+        $this->assertNull($items[0]->previousDto);
+        $this->assertSame('testuser', $items[0]->dto->username);
+        $this->assertSame('testuser', $items[1]->previousDto->username);
+        $this->assertSame('updateduser', $items[1]->dto->username);
     }
 }
