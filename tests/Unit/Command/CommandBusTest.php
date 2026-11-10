@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace StrictlyPHP\Tests\Domantra\Unit\Command;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -110,6 +111,13 @@ class CommandBusTest extends TestCase
             ->method('dispatch')
             ->with($eventLogItem);
 
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Event dispatched', [
+                'name' => 'fooBar',
+                'id' => 'test-id',
+            ]);
+
         $mockModel->expects($this->once())
             ->method('getDto')
             ->willReturn($mockDto);
@@ -117,6 +125,61 @@ class CommandBusTest extends TestCase
         $this->cacheHandler->expects($this->once())
             ->method('set')
             ->with($mockDto);
+
+        $this->commandBus->dispatch($mockCommand);
+    }
+
+    /**
+     * @return array<string, array{mixed, ?string}>
+     */
+    public static function idProvider(): array
+    {
+        return [
+            'stringable value object' => [new class() implements \Stringable {
+                public function __toString(): string
+                {
+                    return 'placement-1';
+                }
+            }, 'placement-1'],
+            'integer' => [42, '42'],
+            'neither' => [['not', 'scalar'], null],
+        ];
+    }
+
+    #[DataProvider('idProvider')]
+    public function testEventDispatchedLogLeavesOutTheEventAndItsDtos(mixed $id, ?string $loggedId): void
+    {
+        $mockCommand = $this->createMock(CommandInterface::class);
+        $mockModel = $this->createMock(AbstractAggregateRoot::class);
+        $this->commandBus->registerHandler(
+            get_class($mockCommand),
+            function (CommandInterface $command) use ($mockModel) {
+                return $mockModel;
+            }
+        );
+
+        $mockModel->method('getDto')->willReturn($this->createMock(CachedDtoInterface::class));
+        $mockModel->method('_getEventLogItems')->willReturn([
+            new EventLogItem(
+                name: 'placementDeclined',
+                event: $this->createMock(EventInterface::class),
+                happenedAt: new \DateTimeImmutable(),
+                dto: (object) [
+                    'id' => $id,
+                    'reason' => 'Private reason',
+                ],
+                previousDto: (object) [
+                    'email' => 'someone@example.com',
+                ],
+            ),
+        ]);
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Event dispatched', [
+                'name' => 'placementDeclined',
+                'id' => $loggedId,
+            ]);
 
         $this->commandBus->dispatch($mockCommand);
     }

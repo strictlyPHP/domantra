@@ -95,8 +95,11 @@ class CommandBus implements CommandBusInterface
                 $hasEvents = true;
                 foreach ($_events as $eventData) {
                     $this->eventBus->dispatch($eventData);
+                    // Never the event or its dtos: they can hold personal data.
+                    $id = $eventData->dto->id ?? null;
                     $this->logger->info('Event dispatched', [
-                        'eventData' => $eventData,
+                        'name' => $eventData->name,
+                        'id' => is_scalar($id) || $id instanceof \Stringable ? (string) $id : null,
                     ]);
                 }
             }
