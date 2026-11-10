@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace StrictlyPHP\Tests\Domantra\Fixtures\Domain;
 
 use DateTimeInterface;
-
 use StrictlyPHP\Domantra\Domain\AbstractAggregateRoot;
 
 class TimestamplessModel extends AbstractAggregateRoot
