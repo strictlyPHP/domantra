@@ -1,12 +1,5 @@
-Changelog for version 0.0.14
+Changelog for version 0.0.16
 
-- ci: verify phpcov checksum and isolate coverage artifacts in a private temp dir (Ken Lalobo)
-- ci: harden phpcov download in build scripts (Ken Lalobo)
-- test: replace addMethods() Predis mock with a fixture subclass (Ken Lalobo)
-- ci: surface all phpunit issues in check-coverage (Ken Lalobo)
-- chore: update phpcov to 10.x and drop stale phpunit result cache entry (Ken Lalobo)
-- chore: upgrade phpunit 9 -> 11 and drop audit ignores (Ken Lalobo)
-- fix: allow recording events on aggregates without UseTimestamps (Ken Lalobo)
-- style: apply ecs fixes to pre-existing violations (Ken Lalobo)
-- feat: capture pre-change dto snapshot on recorded events (Ken Lalobo)
-- chore(deps): bump actions/checkout from 6 to 7 (dependabot[bot])
+- style: remove blank lines between imports in test fixtures (Ken Lalobo)
+- fix: log dispatched events by name and id only, never the event or its dtos (Ken Lalobo)
+- chore: remove obsolete PKSA-5jz8-6tcw-pbk4 audit ignore (Ken Lalobo)
